@@ -10,7 +10,7 @@
 - [ ] GHM-C loss
 - [x] FGM attack
 - [ ] Fix PGD attack
-- [ ] K-fold voting
+- [x] K-fold voting
 - [ ] Fusion of multiple models
 
 #### 方法
