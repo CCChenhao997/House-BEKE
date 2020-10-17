@@ -88,6 +88,7 @@ parser.add_argument('--pseudo', default=False, action='store_true')
 parser.add_argument('--rnntype', default='LSTM', type=str, choices=['LSTM', 'GRU', 'RNN'])
 parser.add_argument('--scheduler', default=False, action='store_true')
 parser.add_argument('--notsavemodel', default=False, action='store_true')
+parser.add_argument('--datareverse', default=False, action='store_true')
 opt = parser.parse_args()
 opt.model_class = model_classes[opt.model_name]
 opt.inputs_cols = input_colses[opt.model_name]

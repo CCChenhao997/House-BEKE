@@ -59,13 +59,15 @@ class Instructor:
         df_test_reply.columns=['id','id_sub','q2']
         df_test_reply['q2'] = df_test_reply['q2'].fillna('好的')
         df_test_data = df_test_query.merge(df_test_reply, how='left')
-        df_test_data_reverse = copy.deepcopy(df_test_data[['id', 'q2', 'id_sub', 'q1']])
         self.submit = copy.deepcopy(df_test_reply)
 
         testset = BertSentenceDataset(df_test_data, self.tokenizer, test=True)
-        testset_reverse = BertSentenceDataset(df_test_data_reverse, self.tokenizer, test=True)
         self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.eval_batch_size, shuffle=False)
-        self.test_dataloader_reverse = DataLoader(dataset=testset_reverse, batch_size=opt.eval_batch_size, shuffle=False)
+
+        if opt.datareverse:
+            df_test_data_reverse = copy.deepcopy(df_test_data[['id', 'q2', 'id_sub', 'q1']])
+            testset_reverse = BertSentenceDataset(df_test_data_reverse, self.tokenizer, test=True)
+            self.test_dataloader_reverse = DataLoader(dataset=testset_reverse, batch_size=opt.eval_batch_size, shuffle=False)
 
         if opt.device.type == 'cuda':
             logger.info('cuda memory allocated: {}'.format(torch.cuda.memory_allocated(opt.device.index)))
@@ -295,7 +297,7 @@ class Instructor:
         # 'id','id_sub','q2'
         self.submit['label'] = pd.DataFrame(predict)
         
-        DATA_DIR = './results/{}/kfold'.format(opt.model_name)
+        DATA_DIR = './results/{}-{}/kfold'.format(opt.model_name, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR, mode=0o777)
         
@@ -329,13 +331,14 @@ class Instructor:
             logger.info('max_f1: {:.4f}'.format(max_f1))
 
             if opt.notsavemodel:
-                txt_path = model_path + "kfold-{}-".format(kfold+1) + strftime("%Y-%m-%d_%H:%M:%S", localtime()) + '.txt'
+                txt_path = model_path + "-kfold-{}-".format(kfold+1) + strftime("%Y-%m-%d_%H:%M:%S", localtime()) + '.txt'
                 os.mknod(txt_path)
             else:
                 torch.save(self.best_model.state_dict(), model_path)
             logger.info('>> saved: {}'.format(model_path))
             self._predict(self.test_dataloader, self.best_model, best_threshold, max_f1, kfold + 1)
-            self._predict(self.test_dataloader_reverse, self.best_model, best_threshold, max_f1, kfold + 1, reverse=True)
+            if opt.datareverse:
+                self._predict(self.test_dataloader_reverse, self.best_model, best_threshold, max_f1, kfold + 1, reverse=True)
             logger.info('=' * 60)
 
 

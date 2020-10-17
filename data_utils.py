@@ -40,7 +40,7 @@ def parse_data(df_data, test=False):
         data = {'query_id': query_id, 'query': query, 'reply': reply, 'label': label}
         all_data.append(data)
 
-        if not test:
+        if not test and opt.datareverse:
             data_reverse = {'query_id': query_id, 'query': reply, 'reply': query, 'label': label}
             all_data.append(data_reverse)
 

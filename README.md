@@ -31,6 +31,9 @@
 
 - [x] Truncation
 - [ ] Clean
+- [ ] Shuffle = False
+- [ ] Kfold
+- [x] StratifiedKFold
 
 #### Papers
 
