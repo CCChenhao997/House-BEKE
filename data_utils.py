@@ -20,32 +20,29 @@ def get_time_dif(start_time):
     return timedelta(seconds=int(round(time_dif)))
 
 def parse_data(df_data, test=False):
-    # df_query = pd.read_csv(query_path, sep='\t', header=None, encoding='utf-8', engine='python')
-    # df_query.columns=['id','q1']
-    # df_reply = pd.read_csv(reply_path, sep='\t', header=None, encoding='utf-8', engine='python')
-    # df_reply.columns=['id','id_sub','q2','label']
-    # df_reply['q2'] = df_reply['q2'].fillna('好的')
-    # df_data = df_query.merge(df_reply, how='left')
     all_data = []
 
     # id    q1  id_sub	q2	label
     for idx, line in df_data.iterrows():
         try:
             query_id = line[0]
-            query = line[1].strip()
+            query = line[1].strip()[: opt.max_length // 2 - 2]
             query_id_sub = line[2]
-            reply = line[3].strip()
+            reply = line[3].strip()[: opt.max_length // 2 - 2]
             if test:    # 测试集
                 label = 0
             else:
                 label = line[4]
         except:
-            # logger.info('{}'.format(line))
-            print(line)
+            logger.info('{}'.format(line))
             exit()
 
         data = {'query_id': query_id, 'query': query, 'reply': reply, 'label': label}
         all_data.append(data)
+
+        if not test:
+            data_reverse = {'query_id': query_id, 'query': reply, 'reply': query, 'label': label}
+            all_data.append(data_reverse)
 
     return all_data
 

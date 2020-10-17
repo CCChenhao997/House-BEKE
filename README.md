@@ -12,6 +12,7 @@
 - [ ] Fix PGD attack
 - [x] K-fold voting
 - [ ] Fusion of multiple models
+- [x] Exchange query-reply pair order
 
 #### Methods
 
@@ -23,9 +24,13 @@
 #### Pre-training language models
 
 - [x] ERNIE 1.0
-- [ ] ERNIE 2.0
 - [ ] RoBERTa
 - [ ] Pretraining with QA data in the real estate field
+
+#### Data processing
+
+- [x] Truncation
+- [ ] Clean
 
 #### Papers
 

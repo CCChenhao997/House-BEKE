@@ -1,4 +1,5 @@
 import os
+from pprint import pprint
 import torch
 import torch.nn as nn
 import argparse
@@ -58,11 +59,13 @@ class Instructor:
         df_test_reply.columns=['id','id_sub','q2']
         df_test_reply['q2'] = df_test_reply['q2'].fillna('好的')
         df_test_data = df_test_query.merge(df_test_reply, how='left')
-
+        df_test_data_reverse = copy.deepcopy(df_test_data[['id', 'q2', 'id_sub', 'q1']])
         self.submit = copy.deepcopy(df_test_reply)
 
         testset = BertSentenceDataset(df_test_data, self.tokenizer, test=True)
+        testset_reverse = BertSentenceDataset(df_test_data_reverse, self.tokenizer, test=True)
         self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.eval_batch_size, shuffle=False)
+        self.test_dataloader_reverse = DataLoader(dataset=testset_reverse, batch_size=opt.eval_batch_size, shuffle=False)
 
         if opt.device.type == 'cuda':
             logger.info('cuda memory allocated: {}'.format(torch.cuda.memory_allocated(opt.device.index)))
@@ -277,11 +280,11 @@ class Instructor:
         return test_acc, best_f1, threshold
 
     
-    def _predict(self, model, best_threshold, max_f1, kfold):
+    def _predict(self, dataset, model, best_threshold, max_f1, kfold, reverse=False):
         model.eval()
         targets_all, outputs_all = None, None
         with torch.no_grad():
-            for batch, sample_batched in enumerate(self.test_dataloader):
+            for batch, sample_batched in enumerate(dataset):
                 inputs = [sample_batched[col].to(opt.device) for col in opt.inputs_cols]
                 outputs = model(inputs)
                 outputs_all = torch.cat((outputs_all, outputs), dim=0) if outputs_all is not None else outputs
@@ -295,7 +298,11 @@ class Instructor:
         DATA_DIR = './results/{}/kfold'.format(opt.model_name)
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR, mode=0o777)
-        save_path = DATA_DIR + '/{}-fold-f1_{}-{}.tsv'.format(kfold, max_f1, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
+        
+        if reverse:
+            save_path = DATA_DIR + '/{}-reverse-fold-f1_{:.4f}-{}.tsv'.format(kfold, max_f1, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
+        else:
+            save_path = DATA_DIR + '/{}-fold-f1_{:.4f}-{}.tsv'.format(kfold, max_f1, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
         self.submit.to_csv(save_path, columns=['id', 'id_sub', 'label'], index=False, header=False, sep='\t')
         logger.info("预测成功！")
     
@@ -327,7 +334,8 @@ class Instructor:
             else:
                 torch.save(self.best_model.state_dict(), model_path)
             logger.info('>> saved: {}'.format(model_path))
-            self._predict(self.best_model, best_threshold, max_f1, kfold + 1)
+            self._predict(self.test_dataloader, self.best_model, best_threshold, max_f1, kfold + 1)
+            self._predict(self.test_dataloader_reverse, self.best_model, best_threshold, max_f1, kfold + 1, reverse=True)
             logger.info('=' * 60)
 
 
