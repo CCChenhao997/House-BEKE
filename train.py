@@ -271,7 +271,7 @@ class Instructor:
         return test_acc, best_f1, threshold
 
     
-    def _predict(self, model, best_threshold, kfold):
+    def _predict(self, model, best_threshold, max_f1, kfold):
         model.eval()
         targets_all, outputs_all = None, None
         with torch.no_grad():
@@ -286,10 +286,10 @@ class Instructor:
         # 'id','id_sub','q2'
         self.submit['label'] = pd.DataFrame(predict)
         
-        DATA_DIR = './results/{}'.format(opt.model_name)
+        DATA_DIR = './results/{}/kfold'.format(opt.model_name)
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR, mode=0o777)
-        save_path = DATA_DIR + '/{}-fold-{}.csv'.format(kfold, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
+        save_path = DATA_DIR + '/{}-fold-f1_{}-{}.tsv'.format(kfold, max_f1, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
         self.submit.to_csv(save_path, columns=['id', 'id_sub', 'label'], index=False, header=False, sep='\t')
         logger.info("预测成功！")
     
@@ -321,7 +321,7 @@ class Instructor:
             else:
                 torch.save(self.best_model.state_dict(), model_path)
             logger.info('>> saved: {}'.format(model_path))
-            self._predict(self.best_model, best_threshold, kfold + 1)
+            self._predict(self.best_model, best_threshold, max_f1, kfold + 1)
             logger.info('=' * 60)
 
 
