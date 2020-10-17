@@ -17,6 +17,7 @@ from transformers import BertModel, AdamW, get_linear_schedule_with_warmup
 from torch.utils.data import DataLoader
 from torch.nn.utils import clip_grad_norm_
 from lossfunc.focalloss import FocalLoss, FocalLossBCE
+from lossfunc.ghmc import GHMC
 from attack import FGM, PGD
 from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif
 from sklearn.model_selection import StratifiedKFold, KFold
@@ -33,7 +34,7 @@ def setup_seed(seed):
 def search_f1(y_true, y_pred):
     best = 0
     best_t = 0
-    for i in range(30, 60):
+    for i in range(20, 60):
         tres = i / 100
         y_pred_bin =  (y_pred >= tres)
         score = metrics.f1_score(y_true, y_pred_bin, average='binary')
@@ -149,6 +150,9 @@ class Instructor:
             logger.info('criterion选择：focalloss')
             # criterion = FocalLoss(num_class=opt.label_dim, alpha=opt.alpha, gamma=opt.gamma, smooth=opt.smooth)
             criterion = FocalLossBCE(alpha=opt.alpha, gamma=opt.gamma, logits=True)
+        elif opt.criterion == 'ghmc':
+            logger.info('criterion选择：ghmc')
+            criterion = GHMC()
         else:
             logger.info('criterion选择：BCEWithLogitsLoss')
             criterion = nn.BCEWithLogitsLoss()
@@ -177,12 +181,15 @@ class Instructor:
                 outputs = model(inputs)
                 targets = sample_batched['label'].to(opt.device)
                 targets = targets.view(-1, 1).float()
+
                 outputs_all.extend(list(np.array(outputs.cpu() >= opt.threshold, dtype='int')))
                 targets_all.extend(list(targets.cpu().detach().numpy()))
                 
-                loss = criterion(outputs, targets) 
+                loss = criterion(outputs, targets)
+
                 if opt.flooding > 0: # flooding
                     loss = (loss - opt.flooding).abs() + opt.flooding
+
                 loss.backward()
 
                 if opt.adv_type == 'fgm':
@@ -227,7 +234,6 @@ class Instructor:
                                 .format(i_batch + 1, loss.item(), train_acc, test_acc, f1, threshold))
 
         logger.info('#' * 100)
-        # self._test(dev_dataloader)
         self._evaluate(self.best_model, dev_dataloader, show_results=True)
         return max_f1, model_path, best_threshold
     
