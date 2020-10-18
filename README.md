@@ -8,13 +8,13 @@
 - [ ] Early stop
 - [x] Focalloss
 - [x] GHM-C loss
-- [ ] DiceLoss
+- [x] DiceLoss
 - [x] FGM attack
-- [ ] Fix PGD attack
+- [x] PGD attack
 - [x] K-fold voting
 - [ ] Fusion of multiple models
 - [x] Exchange query-reply pair order
-- [ ] Pseudo label
+- [ ] Pseudo label [[reference]](https://github.com/zzy99/epidemic-sentence-pair)
 
 #### Methods
 

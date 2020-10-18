@@ -208,7 +208,7 @@ class Instructor:
                     loss_adv.backward()
                     fgm.restore()
 
-                if opt.attack_type == 'pgd':
+                elif opt.attack_type == 'pgd':
                     pgd.backup_grad()
                     for t in range(K):
                         pgd.attack(is_first_attack=(t==0)) # 在embedding上添加对抗扰动, first attack时备份param.data
