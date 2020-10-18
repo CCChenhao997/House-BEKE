@@ -13,7 +13,6 @@
 - [x] PGD attack
 - [x] K-fold voting (5-7-9 fold)
 - [ ] Fusion of multiple models
-- [x] Exchange query-reply pair order
 - [ ] Pseudo label [[reference]](https://github.com/zzy99/epidemic-sentence-pair)
 
 #### Methods
@@ -36,6 +35,8 @@
 - [ ] Shuffle = False
 - [ ] Kfold
 - [x] Stratified-KFold
+- [x] Exchange query-reply pair order
+- [ ] **How to utilize duplicate query?**
 
 #### Papers
 
