@@ -19,6 +19,7 @@ from torch.utils.data import DataLoader
 from torch.nn.utils import clip_grad_norm_
 from lossfunc.focalloss import FocalLoss, FocalLossBCE
 from lossfunc.ghmc import GHMC
+from lossfunc.diceloss import BinaryDiceLoss
 from attack import FGM, PGD
 from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif
 from sklearn.model_selection import StratifiedKFold, KFold
@@ -158,6 +159,9 @@ class Instructor:
         elif opt.criterion == 'ghmc':
             logger.info('criterion选择：ghmc')
             criterion = GHMC()
+        elif opt.criterion == 'diceloss':
+            logger.info('criterion选择：diceloss')
+            criterion = BinaryDiceLoss()
         else:
             logger.info('criterion选择：BCEWithLogitsLoss')
             criterion = nn.BCEWithLogitsLoss()

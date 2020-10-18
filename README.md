@@ -8,6 +8,7 @@
 - [ ] Early stop
 - [x] Focalloss
 - [x] GHM-C loss
+- [ ] DiceLoss
 - [x] FGM attack
 - [ ] Fix PGD attack
 - [x] K-fold voting
@@ -26,7 +27,7 @@
 
 - [x] ERNIE 1.0
 - [x] RoBERTa
-- [ ] Pretraining with QA data in the real estate field
+- [ ] Pre-training with QA data in the real estate field
 
 #### Data processing
 
@@ -34,7 +35,7 @@
 - [x] Clean
 - [ ] Shuffle = False
 - [ ] Kfold
-- [x] StratifiedKFold
+- [x] Stratified-KFold
 
 #### Papers
 
