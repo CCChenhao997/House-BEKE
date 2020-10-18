@@ -143,10 +143,10 @@ class Instructor:
         dev_dataloader = DataLoader(dataset=devset, batch_size=opt.eval_batch_size, shuffle=False)
 
         # 对抗训练
-        if opt.adv_type == 'fgm':
+        if opt.attack_type == 'fgm':
             logger.info('对抗选择：fgm')
             fgm = FGM(model)
-        elif opt.adv_type == 'pgd':
+        elif opt.attack_type == 'pgd':
             logger.info('对抗选择：pgd')
             pgd = PGD(model)
             K = 3
@@ -197,14 +197,14 @@ class Instructor:
 
                 loss.backward()
 
-                if opt.adv_type == 'fgm':
+                if opt.attack_type == 'fgm':
                     fgm.attack()  ##对抗训练
                     outputs = model(inputs)
                     loss_adv = criterion(outputs, targets)
                     loss_adv.backward()
                     fgm.restore()
 
-                if opt.adv_type == 'pgd':
+                if opt.attack_type == 'pgd':
                     pgd.backup_grad()
                     for t in range(K):
                         pgd.attack(is_first_attack=(t==0)) # 在embedding上添加对抗扰动, first attack时备份param.data
@@ -320,6 +320,7 @@ class Instructor:
         X = np.array(df_data.index)
         y = df_data.loc[:, 'label'].to_numpy()
 
+        max_f1_list = []
         skf = StratifiedKFold(n_splits=opt.cross_val_fold, shuffle=True, random_state=opt.seed)
         for kfold, (train_index, dev_index) in enumerate(skf.split(X, y)):
             logger.info("kfold: {}".format(kfold + 1))
@@ -328,6 +329,7 @@ class Instructor:
 
             model = copy.deepcopy(self.model)
             max_f1, model_path, best_threshold = self._train(model, df_train_data, df_dev_data)
+            max_f1_list.append(max_f1)
             logger.info('max_f1: {:.4f}'.format(max_f1))
 
             if opt.notsavemodel:
@@ -340,6 +342,9 @@ class Instructor:
             if opt.datareverse:
                 self._predict(self.test_dataloader_reverse, self.best_model, best_threshold, max_f1, kfold + 1, reverse=True)
             logger.info('=' * 60)
+        
+        for idx, fscore in enumerate(max_f1_list):
+             logger.info("{}-fold-max_f1: {:.4f}".format(idx + 1, fscore))
 
 
 def main():
