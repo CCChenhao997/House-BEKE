@@ -13,6 +13,7 @@
 - [x] K-fold voting
 - [ ] Fusion of multiple models
 - [x] Exchange query-reply pair order
+- [ ] Pseudo label
 
 #### Methods
 
