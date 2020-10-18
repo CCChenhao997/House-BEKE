@@ -297,7 +297,7 @@ class Instructor:
         # 'id','id_sub','q2'
         self.submit['label'] = pd.DataFrame(predict)
         
-        DATA_DIR = './results/{}-{}/kfold'.format(opt.model_name, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
+        DATA_DIR = './results/{}/kfold'.format(opt.model_name)
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR, mode=0o777)
         

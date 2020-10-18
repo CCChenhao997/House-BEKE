@@ -21,18 +21,30 @@ def get_time_dif(start_time):
 
 def parse_data(df_data, test=False):
     all_data = []
-
+    pattern = re.compile(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
     # id    q1  id_sub	q2	label
     for idx, line in df_data.iterrows():
         try:
             query_id = line[0]
-            query = line[1].strip()[: opt.max_length // 2 - 2]
+            query = line[1].strip()
+            query = re.sub(pattern, '', query)
             query_id_sub = line[2]
-            reply = line[3].strip()[: opt.max_length // 2 - 2]
+            reply = line[3].strip()
+            reply = re.sub(pattern, '', reply)
             if test:    # 测试集
                 label = 0
             else:
                 label = line[4]
+
+            while len(query) + len(reply) > opt.max_length:
+                if len(query) <= len(reply) and len(query) <= (opt.max_length // 2):
+                    reply = reply[: opt.max_length - len(query)]
+                elif len(query) > len(reply) and len(reply) <= (opt.max_length // 2):
+                    query = query[: opt.max_length - len(reply)]
+                else:
+                    query = query[: opt.max_length // 2]
+                    reply = reply[: opt.max_length // 2]
+  
         except:
             logger.info('{}'.format(line))
             exit()
