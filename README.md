@@ -11,7 +11,7 @@
 - [x] DiceLoss
 - [x] FGM attack
 - [x] PGD attack
-- [x] K-fold voting
+- [x] K-fold voting (5-7-9 fold)
 - [ ] Fusion of multiple models
 - [x] Exchange query-reply pair order
 - [ ] Pseudo label [[reference]](https://github.com/zzy99/epidemic-sentence-pair)
