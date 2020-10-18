@@ -24,13 +24,13 @@
 #### Pre-training language models
 
 - [x] ERNIE 1.0
-- [ ] RoBERTa
+- [x] RoBERTa
 - [ ] Pretraining with QA data in the real estate field
 
 #### Data processing
 
 - [x] Truncation
-- [ ] Clean
+- [x] Clean
 - [ ] Shuffle = False
 - [ ] Kfold
 - [x] StratifiedKFold
@@ -39,6 +39,28 @@
 
 - [ ] SemBERT [[link]](https://arxiv.org/abs/1909.02209)
 - [ ] Explicit Contextual Semantics for Text Comprehension [[link]](https://arxiv.org/abs/1809.02794)
+
+
+
+-----------------------------
+
+### Submission history
+
+1. 0.77308091 | bert_spc | ERNIE | Search_f1 | StratifiedKFold 5-fold voting | **BCE loss**
+
+   `python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 3  --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE`
+
+2. 0.77179287015 | bert_spc | ERNIE | Search_f1 | StratifiedKFold 5-fold voting | **GHMC loss**
+
+   `python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 3  --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE --criterion ghmc`
+
+3. 0.77587103484 | bert_spc | ERNIE | Search_f1 | StratifiedKFold 5-fold voting | BCE loss | **datareverse**
+
+   `python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 3  --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE --datareverse`
+
+4. unknow | bert_spc | ERNIE | Search_f1 | StratifiedKFold 5-fold voting | BCE loss | **FGM**
+
+   `python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3  --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE --attack_type fgm --scheduler`
 
 ----------------------
 
