@@ -37,7 +37,8 @@
 - [ ] Kfold
 - [x] Stratified-KFold
 - [x] Exchange query-reply pair order
-- [ ] **How to utilize duplicate query?**
+- [ ] **How to utilize duplicate queries?** Similarity Computation & Exchange reply for similar query
+- [ ] Cluster analysis for queries & Multi-task learning
 
 #### Papers
 
