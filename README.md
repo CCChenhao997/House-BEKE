@@ -21,12 +21,14 @@
 - [ ] Double bert + LSTM (Double bert model query and reply respectively, then a BiLSTM model the relation between them)
 - [ ] LCF [[link]](https://www.mdpi.com/2076-3417/9/16/3389)
 - [ ] Semantic Role Labeling
+- [ ] Auxiliary task: Identify whether the sentence is query or reply
 
 #### Pre-training language models
 
 - [x] ERNIE 1.0
 - [x] RoBERTa
-- [ ] BERT-wwm-ext
+- [x] BERT-wwm-ext
+- [x] Pre-training with test dataset
 - [ ] Pre-training with QA data in the real estate field
 
 #### Data processing
@@ -74,6 +76,12 @@
 6. **0.78033390298** | bert_spc | ERNIE | Search_f1 | StratifiedKFold **7-fold** voting | BCE loss | **FGM**
 
    `python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 3  --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE --attack_type fgm --scheduler --cross_val_fold 7`
+
+7. **0.78855493** | bert_spc | **ERNIE-TAPT** | Search_f1 | StratifiedKFold **7-fold** voting | BCE loss | **FGM**
+
+   `python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 3  --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-TAPT --attack_type fgm --scheduler --cross_val_fold 7`
+
+   
 
 ----------------------
 
