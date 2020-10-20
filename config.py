@@ -5,6 +5,7 @@ import torch.nn as nn
 import argparse
 import logging
 from models.bert_spc import Bert_Spc
+from models.bert_cap import Bert_Cap
 
 
 logger = logging.getLogger()
@@ -22,10 +23,12 @@ dataset_files = {
 
 model_classes = {
         'bert_spc': Bert_Spc,
+        'bert_cap': Bert_Cap,
     }
 
 input_colses = {
         'bert_spc': ['dialogue_pair_indices', 'bert_segments_ids', 'attention_mask'],
+        'bert_cap': ['dialogue_pair_indices', 'bert_segments_ids', 'attention_mask'],
     }
     
 initializers = {
@@ -89,6 +92,8 @@ parser.add_argument('--rnntype', default='LSTM', type=str, choices=['LSTM', 'GRU
 parser.add_argument('--scheduler', default=False, action='store_true')
 parser.add_argument('--notsavemodel', default=False, action='store_true')
 parser.add_argument('--datareverse', default=False, action='store_true')
+parser.add_argument('--order_predict', default=False, action='store_true')
+parser.add_argument('--order_dim', default=1, type=int)
 opt = parser.parse_args()
 opt.model_class = model_classes[opt.model_name]
 opt.inputs_cols = input_colses[opt.model_name]

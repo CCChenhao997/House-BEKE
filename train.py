@@ -152,6 +152,7 @@ class Instructor:
             pgd = PGD(model)
             K = 3
 
+        # 选择损失函数
         if opt.criterion == 'focalloss':
             logger.info('criterion选择：focalloss')
             # criterion = FocalLoss(num_class=opt.label_dim, alpha=opt.alpha, gamma=opt.gamma, smooth=opt.smooth)
@@ -186,15 +187,22 @@ class Instructor:
                 model.train()
                 optimizer.zero_grad()
                 inputs = [sample_batched[col].to(opt.device) for col in opt.inputs_cols]
-            
-                outputs = model(inputs)
+
+                order_loss = 0
+                if opt.datareverse and opt.order_predict:
+                    outputs, order_outputs = model(inputs)
+                    order_targets = sample_batched['order'].to(opt.device)
+                    order_targets = order_targets.view(-1, 1).float()
+                    order_loss = criterion(order_outputs, order_targets)
+                else:
+                    outputs = model(inputs)
                 targets = sample_batched['label'].to(opt.device)
                 targets = targets.view(-1, 1).float()
 
                 outputs_all.extend(list(np.array(outputs.cpu() >= opt.threshold, dtype='int')))
                 targets_all.extend(list(targets.cpu().detach().numpy()))
                 
-                loss = criterion(outputs, targets)
+                loss = criterion(outputs, targets) + 0.5 * order_loss
 
                 if opt.flooding > 0: # flooding
                     loss = (loss - opt.flooding).abs() + opt.flooding
@@ -203,7 +211,10 @@ class Instructor:
 
                 if opt.attack_type == 'fgm':
                     fgm.attack()  ##对抗训练
-                    outputs = model(inputs)
+                    if opt.datareverse and opt.order_predict:
+                        outputs, order_outputs = model(inputs)
+                    else:
+                        outputs = model(inputs)
                     loss_adv = criterion(outputs, targets)
                     loss_adv.backward()
                     fgm.restore()
@@ -216,7 +227,11 @@ class Instructor:
                             model.zero_grad()
                         else:
                             pgd.restore_grad()
-                        outputs = model(inputs)
+                        
+                        if opt.datareverse and opt.order_predict:
+                            outputs, order_outputs = model(inputs)
+                        else:
+                            outputs = model(inputs)
                         loss_adv = criterion(outputs, targets)
                         loss_adv.backward()              # 反向传播，并在正常的grad基础上，累加对抗训练的梯度
                     pgd.restore()                        # 恢复embedding参数
@@ -254,7 +269,11 @@ class Instructor:
             for batch, sample_batched in enumerate(dev_dataloader):
                 inputs = [sample_batched[col].to(opt.device) for col in opt.inputs_cols]
                 targets = sample_batched['label'].to(opt.device)
-                outputs = model(inputs)
+
+                if opt.datareverse and opt.order_predict:
+                    outputs, order_outputs = model(inputs)
+                else:
+                    outputs = model(inputs)
                 
                 targets_all = torch.cat((targets_all, targets), dim=0) if targets_all is not None else targets
                 outputs_all = torch.cat((outputs_all, outputs), dim=0) if outputs_all is not None else outputs
@@ -292,7 +311,10 @@ class Instructor:
         with torch.no_grad():
             for batch, sample_batched in enumerate(dataset):
                 inputs = [sample_batched[col].to(opt.device) for col in opt.inputs_cols]
-                outputs = model(inputs)
+                if opt.datareverse and opt.order_predict:
+                    outputs, order_outputs = model(inputs)
+                else:
+                    outputs = model(inputs)
                 outputs_all = torch.cat((outputs_all, outputs), dim=0) if outputs_all is not None else outputs
 
         predict = (outputs_all.cpu() >= best_threshold)
@@ -301,7 +323,7 @@ class Instructor:
         # 'id','id_sub','q2'
         self.submit['label'] = pd.DataFrame(predict)
         
-        DATA_DIR = './results/{}/kfold'.format(opt.model_name)
+        DATA_DIR = './results/{}-cuda-{}/kfold'.format(opt.model_name, opt.cuda)
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR, mode=0o777)
         

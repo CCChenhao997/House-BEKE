@@ -50,10 +50,14 @@ def parse_data(df_data, test=False):
             exit()
 
         data = {'query_id': query_id, 'query': query, 'reply': reply, 'label': label}
+        if opt.order_predict:
+            data['order'] = 1 
         all_data.append(data)
 
         if not test and opt.datareverse:
             data_reverse = {'query_id': query_id, 'query': reply, 'reply': query, 'label': label}
+            if opt.order_predict:
+                data_reverse['order'] = 0   
             all_data.append(data_reverse)
 
     return all_data
@@ -108,14 +112,17 @@ class BertSentenceDataset(Dataset):
             bert_segments_ids = tokenizer.pad_sequence(bert_segments_ids, 0, tokenizer.max_length)
             attention_mask = np.asarray([1] * np.sum(dialogue_pair_indices != 0) + [0] * (opt.max_length - np.sum(dialogue_pair_indices != 0)))
             label = obj['label']
-            data.append(
-                {
+            sub_data = {
                     'dialogue_pair_indices': dialogue_pair_indices,
                     'bert_segments_ids': bert_segments_ids,
                     'attention_mask': attention_mask,
                     'label': label,
                 }
-            )
+
+            if opt.datareverse and opt.order_predict:
+                sub_data['order'] = obj['order']
+
+            data.append(sub_data)
 
         self._data = data
     
