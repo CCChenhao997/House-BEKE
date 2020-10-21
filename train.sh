@@ -18,11 +18,11 @@
 # * ERNIE-TAPT fgm + kfold=7 datareverse  0.78575129534
 # python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 1  --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --datareverse
 
-# * ERNIE-TAPT fgm + kfold=5 datareverse & order_predict 训练巨慢，什么原因？
-# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 2 --max_length 100 --cuda 3  --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-TAPT --attack_type fgm --scheduler --cross_val_fold 5 --datareverse --order_predict
+# * ERNIE-TAPT fgm + kfold=5 order_predict  0.77677520596
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 1  --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-TAPT --attack_type fgm --scheduler --cross_val_fold 5 --order_predict
 
-# * ERNIE-TAPT fgm + kfold=5 bert_cap diff_lr
-python train.py --model_name bert_cap --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 3  --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-TAPT --attack_type fgm --scheduler --train_batch_size 8 --diff_lr
+# * ERNIE-TAPT fgm + kfold=5 bert_cap diff_lr  0.78326013950
+# python train.py --model_name bert_cap --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 3  --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-TAPT --attack_type fgm --scheduler --train_batch_size 8 --diff_lr
 
 # * bert_wwm_ext
 # python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 2  --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/chinese_bert_wwm_ext_pytorch --scheduler --cross_val_fold 7

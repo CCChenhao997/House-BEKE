@@ -140,7 +140,7 @@ class Instructor:
     def _train(self, model, df_train_data, df_dev_data):
         trainset = BertSentenceDataset(df_train_data, self.tokenizer)
         devset = BertSentenceDataset(df_dev_data, self.tokenizer)
-        train_dataloader = DataLoader(dataset=trainset, batch_size=opt.train_batch_size, shuffle=True)
+        train_dataloader = DataLoader(dataset=trainset, batch_size=opt.train_batch_size, shuffle=True, drop_last=True)
         dev_dataloader = DataLoader(dataset=devset, batch_size=opt.eval_batch_size, shuffle=False)
 
         # 对抗训练
@@ -189,7 +189,7 @@ class Instructor:
                 inputs = [sample_batched[col].to(opt.device) for col in opt.inputs_cols]
 
                 order_loss = 0
-                if opt.datareverse and opt.order_predict:
+                if opt.order_predict:
                     outputs, order_outputs = model(inputs)
                     order_targets = sample_batched['order'].to(opt.device)
                     order_targets = order_targets.view(-1, 1).float()
@@ -211,7 +211,7 @@ class Instructor:
 
                 if opt.attack_type == 'fgm':
                     fgm.attack()  ##对抗训练
-                    if opt.datareverse and opt.order_predict:
+                    if opt.order_predict:
                         outputs, order_outputs = model(inputs)
                     else:
                         outputs = model(inputs)
@@ -228,7 +228,7 @@ class Instructor:
                         else:
                             pgd.restore_grad()
                         
-                        if opt.datareverse and opt.order_predict:
+                        if opt.order_predict:
                             outputs, order_outputs = model(inputs)
                         else:
                             outputs = model(inputs)
@@ -270,7 +270,7 @@ class Instructor:
                 inputs = [sample_batched[col].to(opt.device) for col in opt.inputs_cols]
                 targets = sample_batched['label'].to(opt.device)
 
-                if opt.datareverse and opt.order_predict:
+                if opt.order_predict:
                     outputs, order_outputs = model(inputs)
                 else:
                     outputs = model(inputs)
@@ -311,7 +311,7 @@ class Instructor:
         with torch.no_grad():
             for batch, sample_batched in enumerate(dataset):
                 inputs = [sample_batched[col].to(opt.device) for col in opt.inputs_cols]
-                if opt.datareverse and opt.order_predict:
+                if opt.order_predict:
                     outputs, order_outputs = model(inputs)
                 else:
                     outputs = model(inputs)

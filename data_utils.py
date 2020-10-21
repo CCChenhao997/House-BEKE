@@ -49,15 +49,27 @@ def parse_data(df_data, test=False):
             logger.info('{}'.format(line))
             exit()
 
-        data = {'query_id': query_id, 'query': query, 'reply': reply, 'label': label}
+        # data = {'query_id': query_id, 'query': query, 'reply': reply, 'label': label}
+        # if opt.order_predict:
+        #     data['order'] = 1 
+        # all_data.append(data)
+
         if opt.order_predict:
-            data['order'] = 1 
+            if idx % 2 == 0:
+                data = {'query_id': query_id, 'query': query, 'reply': reply, 'label': label}
+                data['order'] = 1
+            else:
+                data = {'query_id': query_id, 'query': reply, 'reply': query, 'label': label}
+                data['order'] = 0
+        else:
+            data = {'query_id': query_id, 'query': query, 'reply': reply, 'label': label}
+        
         all_data.append(data)
 
         if not test and opt.datareverse:
             data_reverse = {'query_id': query_id, 'query': reply, 'reply': query, 'label': label}
-            if opt.order_predict:
-                data_reverse['order'] = 0   
+            # if opt.order_predict:
+            #     data_reverse['order'] = 0   
             all_data.append(data_reverse)
 
     return all_data
@@ -119,7 +131,7 @@ class BertSentenceDataset(Dataset):
                     'label': label,
                 }
 
-            if opt.datareverse and opt.order_predict:
+            if opt.order_predict:
                 sub_data['order'] = obj['order']
 
             data.append(sub_data)
