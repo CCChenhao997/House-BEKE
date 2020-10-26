@@ -2,7 +2,6 @@ import os
 import pandas as pd
 import numpy as np
 import copy
-from pprint import pprint
 
 def work(kfold):
     count = [0, 0]
@@ -19,6 +18,8 @@ def vote(kfold_path):
     for fname in files:
         tmp_df = pd.read_csv(kfold_path + fname, sep='\t', header=None)
         tmp_df.columns = ['id','id_sub','label']
+        # tmp_df_left = copy.deepcopy(tmp_df[['id', 'label']])
+        # pprint(tmp_df.head(10))
         if i == 0:
             df_merged = pd.read_csv(kfold_path + fname, sep='\t', header=None)
             df_merged.columns = ['id','id_sub','label']
@@ -32,8 +33,8 @@ def vote(kfold_path):
     df_summit['label'] = voted_label
 
     df_summit.to_csv(kfold_path + 'voted.tsv', index=False, header=False, sep='\t')
-
+    print("Vote successful!")
 
 if __name__ == "__main__":
-    kfold_path = './results/bert_spc_ERNIE1.0/kfold/'
+    kfold_path = './results/bert_spc-cuda-3/kfold/'
     vote(kfold_path)

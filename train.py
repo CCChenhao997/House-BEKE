@@ -1,12 +1,8 @@
 import os
-from pprint import pprint
 import torch
 import torch.nn as nn
-import argparse
 import random
-import math
 import logging
-import sys
 import copy
 import time
 from time import strftime, localtime
@@ -24,6 +20,7 @@ from attack import FGM, PGD
 from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif
 from sklearn.model_selection import StratifiedKFold, KFold
 from config import opt, logger, dataset_files
+from voting import vote
 
 
 def setup_seed(seed):
@@ -36,7 +33,7 @@ def setup_seed(seed):
 def search_f1(y_true, y_pred):
     best = 0
     best_t = 0
-    for i in range(20, 60):
+    for i in range(opt.start, opt.end):
         tres = i / 100
         y_pred_bin =  (y_pred >= tres)
         score = metrics.f1_score(y_true, y_pred_bin, average='binary')
@@ -156,7 +153,7 @@ class Instructor:
         if opt.criterion == 'focalloss':
             logger.info('criterion选择：focalloss')
             # criterion = FocalLoss(num_class=opt.label_dim, alpha=opt.alpha, gamma=opt.gamma, smooth=opt.smooth)
-            criterion = FocalLossBCE(alpha=opt.alpha, gamma=opt.gamma, logits=True)
+            criterion = FocalLossBCE(alpha=opt.alpha, gamma=opt.gamma, logits=True, reduce=False)
         elif opt.criterion == 'ghmc':
             logger.info('criterion选择：ghmc')
             criterion = GHMC()
@@ -323,14 +320,14 @@ class Instructor:
         # 'id','id_sub','q2'
         self.submit['label'] = pd.DataFrame(predict)
         
-        DATA_DIR = './results/{}-cuda-{}/kfold'.format(opt.model_name, opt.cuda)
+        DATA_DIR = './results/{}-cuda-{}/kfold/'.format(opt.model_name, opt.cuda)
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR, mode=0o777)
         
         if reverse:
-            save_path = DATA_DIR + '/{}-reverse-fold-f1_{:.4f}-{}.tsv'.format(kfold, max_f1, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
+            save_path = DATA_DIR + '{}-reverse-fold-f1_{:.4f}-{}.tsv'.format(kfold, max_f1, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
         else:
-            save_path = DATA_DIR + '/{}-fold-f1_{:.4f}-{}.tsv'.format(kfold, max_f1, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
+            save_path = DATA_DIR + '{}-fold-f1_{:.4f}-{}.tsv'.format(kfold, max_f1, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
         self.submit.to_csv(save_path, columns=['id', 'id_sub', 'label'], index=False, header=False, sep='\t')
         logger.info("预测成功！")
     
@@ -369,8 +366,11 @@ class Instructor:
                 self._predict(self.test_dataloader_reverse, self.best_model, best_threshold, max_f1, kfold + 1, reverse=True)
             logger.info('=' * 60)
         
+        vote('./results/{}-cuda-{}/kfold/'.format(opt.model_name, opt.cuda))
+
         for idx, fscore in enumerate(max_f1_list):
-             logger.info("{}-fold-max_f1: {:.4f}".format(idx + 1, fscore))
+            logger.info("{}-fold-max_f1: {:.4f}".format(idx + 1, fscore))
+        logger.info("f1-mean: {:.4f}".format(np.mean(max_f1_list)))
 
 
 def main():

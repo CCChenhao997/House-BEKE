@@ -1,17 +1,11 @@
-import os
-import nltk
 import re
-import json
-import pickle
 import time
-import torch
 from datetime import timedelta
 import numpy as np
 import pandas as pd
 from config import logger, opt
 from transformers import BertTokenizer
 from torch.utils.data import Dataset
-from pprint import pprint
 
 def get_time_dif(start_time):
     """获取已使用时间"""
@@ -20,6 +14,11 @@ def get_time_dif(start_time):
     return timedelta(seconds=int(round(time_dif)))
 
 def parse_data(df_data, test=False):
+
+    # 训练集中reply去重
+    if not test:
+        df_data = df_data.groupby('id', as_index=False).apply(lambda df: df.drop_duplicates('q2', keep='first'))
+
     all_data = []
     pattern = re.compile(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
     # id    q1  id_sub	q2	label
@@ -27,15 +26,30 @@ def parse_data(df_data, test=False):
         try:
             query_id = line[0]
             query = line[1].strip()
+            # 去除url和空格
             query = re.sub(pattern, '', query)
+            query = query.replace(' ', '')
             query_id_sub = line[2]
             reply = line[3].strip()
             reply = re.sub(pattern, '', reply)
+            reply = reply.replace(' ', '')
+
+            # 去除emoji
+            query = re.sub(u'[\U00010000-\U0010ffff]', '', query)
+            reply = re.sub(u'[\U00010000-\U0010ffff]', '', reply)
+            if not re.search('[\w\u4E00-\u9FA5]+', query) or not re.search('[\w\u4E00-\u9FA5]+', reply):
+                continue
+            
+            if len(query) == 0 or len(reply) == 0:
+                logger.info("query or reply is empty!")
+                exit()
+
             if test:    # 测试集
                 label = 0
             else:
                 label = line[4]
 
+            # 句子长度截断处理
             while len(query) + len(reply) > opt.max_length:
                 if len(query) <= len(reply) and len(query) <= (opt.max_length // 2):
                     reply = reply[: opt.max_length - len(query)]
@@ -49,11 +63,7 @@ def parse_data(df_data, test=False):
             logger.info('{}'.format(line))
             exit()
 
-        # data = {'query_id': query_id, 'query': query, 'reply': reply, 'label': label}
-        # if opt.order_predict:
-        #     data['order'] = 1 
-        # all_data.append(data)
-
+        # 多任务，query-reply顺序预测
         if opt.order_predict:
             if idx % 2 == 0:
                 data = {'query_id': query_id, 'query': query, 'reply': reply, 'label': label}
@@ -66,10 +76,9 @@ def parse_data(df_data, test=False):
         
         all_data.append(data)
 
+        # 数据增强: query-reply逆序
         if not test and opt.datareverse:
             data_reverse = {'query_id': query_id, 'query': reply, 'reply': query, 'label': label}
-            # if opt.order_predict:
-            #     data_reverse['order'] = 0   
             all_data.append(data_reverse)
 
     return all_data
@@ -143,3 +152,19 @@ class BertSentenceDataset(Dataset):
     
     def __len__(self):
         return len(self._data)
+
+
+if __name__ == '__main__':
+    query_path = './data/train/train.query.tsv'
+    reply_path = './data/train/train.reply.tsv'
+    df_query = pd.read_csv(query_path, sep='\t', header=None, encoding='utf-8', engine='python')
+    df_query.columns = ['id', 'q1']
+    df_reply = pd.read_csv(reply_path, sep='\t', header=None, encoding='utf-8', engine='python')
+    df_reply.columns = ['id', 'id_sub', 'q2', 'label']
+    df_reply['q2'] = df_reply['q2'].fillna('好的')
+    df_data = df_query.merge(df_reply, how='left')
+    df_data = df_data[['id', 'q1', 'id_sub', 'q2', 'label']]
+    # X = np.array(df_data.index)
+    # y = df_data.loc[:, 'label'].to_numpy()
+    data = parse_data(df_data)
+    print(data[0])
