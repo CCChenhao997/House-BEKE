@@ -17,7 +17,8 @@ def parse_data(df_data, test=False):
 
     # 训练集中reply去重
     if not test:
-        df_data = df_data.groupby('id', as_index=False).apply(lambda df: df.drop_duplicates('q2', keep='first'))
+        df_data = df_data.groupby('q1', as_index=False).apply(lambda df: df.drop_duplicates('q2', keep='first'))
+        # df_data = df_data.groupby('id', as_index=False).apply(lambda df: df.drop_duplicates('q2', keep=False))
 
     all_data = []
     pattern = re.compile(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
@@ -26,19 +27,25 @@ def parse_data(df_data, test=False):
         try:
             query_id = line[0]
             query = line[1].strip()
-            # 去除url和空格
-            query = re.sub(pattern, '', query)
-            query = query.replace(' ', '')
+            # 去除url和空格 (多个连续空格转1个空格)
+            query = re.sub(pattern, '链接', query)
+            # query = query.replace(' ', '')
+            query = re.sub(r'\s+', ' ', query)
             query_id_sub = line[2]
             reply = line[3].strip()
-            reply = re.sub(pattern, '', reply)
-            reply = reply.replace(' ', '')
+            reply = re.sub(pattern, '链接', reply)
+            # reply = reply.replace(' ', '')
+            reply = re.sub(r'\s+', ' ', reply)
 
             # 去除emoji
-            query = re.sub(u'[\U00010000-\U0010ffff]', '', query)
-            reply = re.sub(u'[\U00010000-\U0010ffff]', '', reply)
-            if not re.search('[\w\u4E00-\u9FA5]+', query) or not re.search('[\w\u4E00-\u9FA5]+', reply):
-                continue
+            if not test:
+                query = re.sub(u'[\U00010000-\U0010ffff]', '', query)
+                reply = re.sub(u'[\U00010000-\U0010ffff]', '', reply)
+                # 去掉没有中文的样本
+                # if not re.search('[\w\u4E00-\u9FA5]+', query) or not re.search('[\w\u4E00-\u9FA5]+', reply):
+                #     continue
+                if len(query) == 0 or len(reply) == 0:
+                    continue
             
             if len(query) == 0 or len(reply) == 0:
                 logger.info("query or reply is empty!")
@@ -81,6 +88,7 @@ def parse_data(df_data, test=False):
             data_reverse = {'query_id': query_id, 'query': reply, 'reply': query, 'label': label}
             all_data.append(data_reverse)
 
+    logger.info('样本数: {}'.format(len(all_data)))
     return all_data
 
 
@@ -132,11 +140,17 @@ class BertSentenceDataset(Dataset):
             bert_segments_ids = np.asarray([0] * (np.sum(query_indices != 0) + 2) + [1] * (np.sum(reply_indices != 0) + 1))
             bert_segments_ids = tokenizer.pad_sequence(bert_segments_ids, 0, tokenizer.max_length)
             attention_mask = np.asarray([1] * np.sum(dialogue_pair_indices != 0) + [0] * (opt.max_length - np.sum(dialogue_pair_indices != 0)))
+            attention_mask_query = np.asarray([1] * np.sum(query_indices != 0) + [0] * (opt.max_length - np.sum(query_indices != 0)))
+            attention_mask_reply = np.asarray([1] * np.sum(reply_indices != 0) + [0] * (opt.max_length - np.sum(reply_indices != 0)))
             label = obj['label']
             sub_data = {
                     'dialogue_pair_indices': dialogue_pair_indices,
                     'bert_segments_ids': bert_segments_ids,
                     'attention_mask': attention_mask,
+                    'query_indices': query_indices,
+                    'reply_indices': reply_indices,
+                    'attention_mask_query': attention_mask_query,
+                    'attention_mask_reply': attention_mask_reply,
                     'label': label,
                 }
 

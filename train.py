@@ -1,5 +1,6 @@
 import os
 import torch
+from torch import sort
 import torch.nn as nn
 import random
 import logging
@@ -51,6 +52,8 @@ class Instructor:
         self.model = opt.model_class(bert_model, opt).to(opt.device)
 
         # * testset
+        self.test_query = test_query
+        self.test_reply = test_reply
         df_test_query = pd.read_csv(test_query, sep='\t', header=None, encoding='utf-8', engine='python')
         df_test_query.columns=['id','q1']
         df_test_reply = pd.read_csv(test_reply, sep='\t', header=None, encoding='utf-8', engine='python')
@@ -58,6 +61,7 @@ class Instructor:
         df_test_reply['q2'] = df_test_reply['q2'].fillna('好的')
         df_test_data = df_test_query.merge(df_test_reply, how='left')
         self.submit = copy.deepcopy(df_test_reply)
+        self.pseudo = copy.deepcopy(df_test_data)
 
         testset = BertSentenceDataset(df_test_data, self.tokenizer, test=True)
         self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.eval_batch_size, shuffle=False)
@@ -349,6 +353,21 @@ class Instructor:
             logger.info("kfold: {}".format(kfold + 1))
             df_train_data = df_data.iloc[train_index]
             df_dev_data = df_data.iloc[dev_index]
+            logger.info("df_train_data: {}".format(df_train_data.shape))
+
+            if opt.add_pseudo_data:
+                df_pseudo_label = pd.read_csv(opt.pseudo_path, sep='\t', header=None, encoding='utf-8', engine='python')
+                df_pseudo_label.columns=['id','id_sub', 'label']
+                df_pseudo = copy.deepcopy(self.pseudo)
+                df_pseudo['label'] = df_pseudo_label['label']
+                df_pseudo_pos = df_pseudo[df_pseudo['label'] == 1].sample(n=opt.pos_num, random_state=kfold)
+                df_train_data = df_train_data.append(df_pseudo_pos)
+
+                if opt.neg_num > 0:
+                    df_pseudo_neg = df_pseudo[df_pseudo['label'] == 0].sample(n=opt.neg_num, random_state=kfold)
+                    df_train_data.append(df_pseudo_neg, sort=False)
+
+                logger.info("df_train_data_add_pseudo: {}".format(df_train_data.shape))
 
             model = copy.deepcopy(self.model)
             max_f1, model_path, best_threshold = self._train(model, df_train_data, df_dev_data)

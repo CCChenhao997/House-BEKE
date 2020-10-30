@@ -5,7 +5,6 @@
 #### Tricks
 
 - [x] F1 search
-- [ ] Early stop
 - [x] Focalloss
 - [x] GHM-C loss
 - [x] DiceLoss
@@ -18,7 +17,7 @@
 #### Methods
 
 - [x] bert
-- [ ] Double bert + LSTM (Double bert model query and reply respectively, then a BiLSTM model the relation between them)
+- [x] Double bert + LSTM (Double bert model query and reply respectively, then a BiLSTM model the relation between them)
 - [ ] LCF [[link]](https://www.mdpi.com/2076-3417/9/16/3389)
 - [ ] Semantic Role Labeling
 - [x] Auxiliary task: Identify query-reply or reply-query
@@ -35,13 +34,12 @@
 
 - [x] Truncation
 - [x] Clean
-- [ ] Shuffle = False
-- [ ] Kfold
 - [x] Stratified-KFold
 - [x] Exchange query-reply pair order
-- [ ] **How to utilize duplicate queries?** Similarity Computation & Exchange reply for similar query
+- [x] Delete duplicate queries and emoji
 - [ ] Cluster analysis for queries & Multi-task learning
 - [ ] Back translation
+- [ ] Split reply that exceeds the maximum length
 
 #### Papers
 
