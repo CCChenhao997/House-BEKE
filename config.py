@@ -8,6 +8,7 @@ from models.bert_spc import Bert_Spc
 from models.bert_cap import Bert_Cap
 from models.bert_rnn import Bert_RNN
 from models.dual_bert import Dual_Bert
+from models.bert_spc_rev import Bert_Spc_Rev
 
 
 logger = logging.getLogger()
@@ -28,13 +29,15 @@ model_classes = {
         'bert_cap': Bert_Cap,
         'bert_rnn': Bert_RNN,
         'dual_bert': Dual_Bert,
+        'bert_spc_rev': Bert_Spc_Rev,
     }
 
 input_colses = {
         'bert_spc': ['dialogue_pair_indices', 'bert_segments_ids', 'attention_mask'],
         'bert_cap': ['dialogue_pair_indices', 'bert_segments_ids', 'attention_mask'],
         'bert_rnn': ['dialogue_pair_indices', 'bert_segments_ids', 'attention_mask'],
-        'dual_bert': ['query_indices', 'reply_indices', 'attention_mask_query', 'attention_mask_reply']
+        'dual_bert': ['query_indices', 'reply_indices', 'attention_mask_query', 'attention_mask_reply'],
+        'bert_spc_rev': ['dialogue_pair_indices_reverse', 'bert_segments_ids_reverse', 'attention_mask_reverse'],
     }
     
 initializers = {
@@ -103,10 +106,9 @@ parser.add_argument('--rnntype', default='LSTM', type=str, choices=['LSTM', 'GRU
 parser.add_argument('--scheduler', default=False, action='store_true')
 parser.add_argument('--notsavemodel', default=False, action='store_true')
 parser.add_argument('--datareverse', default=False, action='store_true')
-parser.add_argument('--order_predict', default=False, action='store_true')
-parser.add_argument('--order_dim', default=1, type=int)
 parser.add_argument('--start', default=20, type=int)
 parser.add_argument('--end', default=60, type=int)
+parser.add_argument('--optimizer', default='AdamW', type=str, choices=['AdamW', 'RAdam'])
 opt = parser.parse_args()
 opt.model_class = model_classes[opt.model_name]
 opt.inputs_cols = input_colses[opt.model_name]

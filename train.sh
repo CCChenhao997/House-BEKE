@@ -21,7 +21,9 @@
 
 # python train.py --model_name bert_spc --seed 8888 --bert_lr 2e-5 --num_epoch 6 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name hfl/chinese-bert-wwm --attack_type fgm --scheduler --cross_val_fold 7
 
-python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-TAPT --attack_type fgm --scheduler --cross_val_fold 5 --add_pseudo_data --pos_num 5000 --pseudo_path ./results/bert_spc_ERNIE-TAPT_FGM_7-fold_20201019/kfold/voted.tsv
+# python train.py --model_name bert_spc_rev --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-TAPT --attack_type fgm --scheduler --cross_val_fold 7
+
+python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 2 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --optimizer RAdam
 
 # python train.py --model_name bert_rnn --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 2  --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --diff_lr --layers_lr 0.001
 

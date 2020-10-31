@@ -65,22 +65,38 @@ def parse_data(df_data, test=False):
                 else:
                     query = query[: opt.max_length // 2]
                     reply = reply[: opt.max_length // 2]
+
+                # * 测试阶段怎么处理?
+                # if len(query) <= len(reply) and len(query) <= (opt.max_length // 2):
+                #     reply1, reply2 = reply[: len(reply) // 2], reply[len(reply) // 2: ]
+                #     data = {'query_id': query_id, 'query': query, 'reply': reply1, 'label': label}
+                #     all_data.append(data)
+                #     data = {'query_id': query_id, 'query': query, 'reply': reply2, 'label': label}
+                #     all_data.append(data)
+                # elif len(query) > len(reply) and len(reply) <= (opt.max_length // 2):
+                #     query1, query2 = query[: len(query) // 2], query[len(query) // 2: ]
+                #     data = {'query_id': query_id, 'query': query1, 'reply': reply, 'label': label}
+                #     all_data.append(data)
+                #     data = {'query_id': query_id, 'query': query2, 'reply': reply, 'label': label}
+                #     all_data.append(data)
+                # else:
+                #     query1, query2 = query[: len(query) // 2], query[len(query) // 2: ]
+                #     reply1, reply2 = reply[: len(reply) // 2], reply[len(reply) // 2: ]
+                #     data = {'query_id': query_id, 'query': query, 'reply': reply1, 'label': label}
+                #     all_data.append(data)
+                #     data = {'query_id': query_id, 'query': query, 'reply': reply2, 'label': label}
+                #     all_data.append(data)
+                #     data = {'query_id': query_id, 'query': query1, 'reply': reply, 'label': label}
+                #     all_data.append(data)
+                #     data = {'query_id': query_id, 'query': query2, 'reply': reply, 'label': label}
+                #     all_data.append(data)
+                # continue
   
         except:
             logger.info('{}'.format(line))
             exit()
 
-        # 多任务，query-reply顺序预测
-        if opt.order_predict:
-            if idx % 2 == 0:
-                data = {'query_id': query_id, 'query': query, 'reply': reply, 'label': label}
-                data['order'] = 1
-            else:
-                data = {'query_id': query_id, 'query': reply, 'reply': query, 'label': label}
-                data['order'] = 0
-        else:
-            data = {'query_id': query_id, 'query': query, 'reply': reply, 'label': label}
-        
+        data = {'query_id': query_id, 'query': query, 'reply': reply, 'label': label}
         all_data.append(data)
 
         # 数据增强: query-reply逆序
@@ -135,27 +151,31 @@ class BertSentenceDataset(Dataset):
         parse = parse_data
         for obj in parse(df_data, test):
             dialogue_pair_indices = tokenizer.text_to_sequence("[CLS] " + obj['query'] + " [SEP] " + obj['reply'] + " [SEP]")
+            dialogue_pair_indices_reverse = tokenizer.text_to_sequence("[CLS] " + obj['reply'] + " [SEP] " + obj['query'] + " [SEP]")
             query_indices = tokenizer.text_to_sequence(obj['query'])
             reply_indices = tokenizer.text_to_sequence(obj['reply'])
             bert_segments_ids = np.asarray([0] * (np.sum(query_indices != 0) + 2) + [1] * (np.sum(reply_indices != 0) + 1))
             bert_segments_ids = tokenizer.pad_sequence(bert_segments_ids, 0, tokenizer.max_length)
+            bert_segments_ids_reverse = np.asarray([0] * (np.sum(reply_indices != 0) + 2) + [1] * (np.sum(query_indices != 0) + 1))
+            bert_segments_ids_reverse = tokenizer.pad_sequence(bert_segments_ids_reverse, 0, tokenizer.max_length)
             attention_mask = np.asarray([1] * np.sum(dialogue_pair_indices != 0) + [0] * (opt.max_length - np.sum(dialogue_pair_indices != 0)))
+            attention_mask_reverse = np.asarray([1] * np.sum(dialogue_pair_indices_reverse != 0) + [0] * (opt.max_length - np.sum(dialogue_pair_indices_reverse != 0)))
             attention_mask_query = np.asarray([1] * np.sum(query_indices != 0) + [0] * (opt.max_length - np.sum(query_indices != 0)))
             attention_mask_reply = np.asarray([1] * np.sum(reply_indices != 0) + [0] * (opt.max_length - np.sum(reply_indices != 0)))
             label = obj['label']
             sub_data = {
                     'dialogue_pair_indices': dialogue_pair_indices,
+                    'dialogue_pair_indices_reverse': dialogue_pair_indices_reverse,
                     'bert_segments_ids': bert_segments_ids,
+                    'bert_segments_ids_reverse': bert_segments_ids_reverse,
                     'attention_mask': attention_mask,
+                    'attention_mask_reverse': attention_mask_reverse,
                     'query_indices': query_indices,
                     'reply_indices': reply_indices,
                     'attention_mask_query': attention_mask_query,
                     'attention_mask_reply': attention_mask_reply,
                     'label': label,
                 }
-
-            if opt.order_predict:
-                sub_data['order'] = obj['order']
 
             data.append(sub_data)
 

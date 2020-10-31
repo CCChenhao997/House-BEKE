@@ -22,6 +22,7 @@ from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif
 from sklearn.model_selection import StratifiedKFold, KFold
 from config import opt, logger, dataset_files
 from voting import vote
+from optimizer.radam import RAdam
 
 
 def setup_seed(seed):
@@ -42,6 +43,13 @@ def search_f1(y_true, y_pred):
             best = score
             best_t = tres
     return best, best_t
+
+def ratio(label_path):
+    df = pd.read_csv(label_path, sep='\t', header=None, encoding='utf-8', engine='python')
+    df.columns=['id','id_sub', 'label']
+
+    logger.info("预测标签比例为:")
+    logger.info(df['label'].value_counts())
 
 
 class Instructor:
@@ -123,8 +131,14 @@ class Instructor:
                     "lr": opt.layers_lr
                 },
             ]
-            optimizer = AdamW(optimizer_grouped_parameters, eps=opt.adam_epsilon)
-
+            if opt.optimizer == 'AdamW':
+                optimizer = AdamW(optimizer_grouped_parameters, eps=opt.adam_epsilon)
+                logger.info("Choose AdamW")
+            elif opt.optimizer == 'RAdam':
+                optimizer = RAdam(optimizer_grouped_parameters, eps=opt.adam_epsilon)
+                logger.info("Choose RAdam")
+            else:
+                logger.info("Please input correct optimizer!")
         else:
             logger.info("bert learning rate on")
             optimizer_grouped_parameters = [
@@ -133,8 +147,15 @@ class Instructor:
                 {'params': [p for n, p in model.named_parameters() if any(
                     nd in n for nd in no_decay)], 'weight_decay': 0.0}
             ]
-            optimizer = AdamW(optimizer_grouped_parameters,
-                        lr=opt.bert_lr, eps=opt.adam_epsilon)   #  weight_decay=opt.l2reg
+
+            if opt.optimizer == 'AdamW':
+                optimizer = AdamW(optimizer_grouped_parameters, lr=opt.bert_lr, eps=opt.adam_epsilon)   #  weight_decay=opt.l2reg
+                logger.info("Choose AdamW")
+            elif opt.optimizer == 'RAdam':
+                optimizer = RAdam(optimizer_grouped_parameters, lr=opt.bert_lr, eps=opt.adam_epsilon)
+                logger.info("Choose RAdam")
+            else:
+                logger.info("Please input correct optimizer!")
 
         return optimizer
     
@@ -189,21 +210,14 @@ class Instructor:
                 optimizer.zero_grad()
                 inputs = [sample_batched[col].to(opt.device) for col in opt.inputs_cols]
 
-                order_loss = 0
-                if opt.order_predict:
-                    outputs, order_outputs = model(inputs)
-                    order_targets = sample_batched['order'].to(opt.device)
-                    order_targets = order_targets.view(-1, 1).float()
-                    order_loss = criterion(order_outputs, order_targets)
-                else:
-                    outputs = model(inputs)
+                outputs = model(inputs)
                 targets = sample_batched['label'].to(opt.device)
                 targets = targets.view(-1, 1).float()
 
                 outputs_all.extend(list(np.array(outputs.cpu() >= opt.threshold, dtype='int')))
                 targets_all.extend(list(targets.cpu().detach().numpy()))
                 
-                loss = criterion(outputs, targets) + 0.5 * order_loss
+                loss = criterion(outputs, targets)
 
                 if opt.flooding > 0: # flooding
                     loss = (loss - opt.flooding).abs() + opt.flooding
@@ -212,10 +226,7 @@ class Instructor:
 
                 if opt.attack_type == 'fgm':
                     fgm.attack()  ##对抗训练
-                    if opt.order_predict:
-                        outputs, order_outputs = model(inputs)
-                    else:
-                        outputs = model(inputs)
+                    outputs = model(inputs)
                     loss_adv = criterion(outputs, targets)
                     loss_adv.backward()
                     fgm.restore()
@@ -229,10 +240,7 @@ class Instructor:
                         else:
                             pgd.restore_grad()
                         
-                        if opt.order_predict:
-                            outputs, order_outputs = model(inputs)
-                        else:
-                            outputs = model(inputs)
+                        outputs = model(inputs)
                         loss_adv = criterion(outputs, targets)
                         loss_adv.backward()              # 反向传播，并在正常的grad基础上，累加对抗训练的梯度
                     pgd.restore()                        # 恢复embedding参数
@@ -270,11 +278,7 @@ class Instructor:
             for batch, sample_batched in enumerate(dev_dataloader):
                 inputs = [sample_batched[col].to(opt.device) for col in opt.inputs_cols]
                 targets = sample_batched['label'].to(opt.device)
-
-                if opt.order_predict:
-                    outputs, order_outputs = model(inputs)
-                else:
-                    outputs = model(inputs)
+                outputs = model(inputs)
                 
                 targets_all = torch.cat((targets_all, targets), dim=0) if targets_all is not None else targets
                 outputs_all = torch.cat((outputs_all, outputs), dim=0) if outputs_all is not None else outputs
@@ -312,10 +316,7 @@ class Instructor:
         with torch.no_grad():
             for batch, sample_batched in enumerate(dataset):
                 inputs = [sample_batched[col].to(opt.device) for col in opt.inputs_cols]
-                if opt.order_predict:
-                    outputs, order_outputs = model(inputs)
-                else:
-                    outputs = model(inputs)
+                outputs = model(inputs)
                 outputs_all = torch.cat((outputs_all, outputs), dim=0) if outputs_all is not None else outputs
 
         predict = (outputs_all.cpu() >= best_threshold)
@@ -334,6 +335,7 @@ class Instructor:
             save_path = DATA_DIR + '{}-fold-f1_{:.4f}-{}.tsv'.format(kfold, max_f1, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
         self.submit.to_csv(save_path, columns=['id', 'id_sub', 'label'], index=False, header=False, sep='\t')
         logger.info("预测成功！")
+        ratio(save_path)
     
     def run(self, query_path, reply_path):
         # * trainset & devset
@@ -360,8 +362,10 @@ class Instructor:
                 df_pseudo_label.columns=['id','id_sub', 'label']
                 df_pseudo = copy.deepcopy(self.pseudo)
                 df_pseudo['label'] = df_pseudo_label['label']
-                df_pseudo_pos = df_pseudo[df_pseudo['label'] == 1].sample(n=opt.pos_num, random_state=kfold)
-                df_train_data = df_train_data.append(df_pseudo_pos)
+
+                if opt.pos_num > 0:
+                    df_pseudo_pos = df_pseudo[df_pseudo['label'] == 1].sample(n=opt.pos_num, random_state=kfold)
+                    df_train_data = df_train_data.append(df_pseudo_pos)
 
                 if opt.neg_num > 0:
                     df_pseudo_neg = df_pseudo[df_pseudo['label'] == 0].sample(n=opt.neg_num, random_state=kfold)
@@ -386,6 +390,7 @@ class Instructor:
             logger.info('=' * 60)
         
         vote('./results/{}-cuda-{}/kfold/'.format(opt.model_name, opt.cuda))
+        ratio('./results/{}-cuda-{}/kfold/'.format(opt.model_name, opt.cuda) + 'voted.tsv')
 
         for idx, fscore in enumerate(max_f1_list):
             logger.info("{}-fold-max_f1: {:.4f}".format(idx + 1, fscore))

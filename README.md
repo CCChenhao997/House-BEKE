@@ -13,6 +13,8 @@
 - [x] K-fold voting (5-7-9 fold)
 - [ ] Fusion of multiple models
 - [ ] Pseudo label [[reference]](https://github.com/zzy99/epidemic-sentence-pair)
+- [x] RAdam optimizer
+- [ ] Reverse query-reply
 
 #### Methods
 
@@ -29,6 +31,7 @@
 - [x] BERT-wwm-ext
 - [x] Pre-training with test dataset
 - [ ] Pre-training with QA data in the real estate field
+- [ ] Pre-training with QA data in other domain [[Link1]](https://spaces.ac.cn/archives/4338/comment-page-2#comments) [[Link2]](https://github.com/chatopera/insuranceqa-corpus-zh)
 
 #### Data processing
 
@@ -46,7 +49,10 @@
 - [ ] SemBERT [[link]](https://arxiv.org/abs/1909.02209)
 - [ ] Explicit Contextual Semantics for Text Comprehension [[link]](https://arxiv.org/abs/1809.02794)
 
+#### Analysis
 
+- [ ] Prediction results of dev set
+- [ ] Prediction results of test set
 
 -----------------------------
 
