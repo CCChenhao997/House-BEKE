@@ -37,6 +37,7 @@
 
 - [x] Truncation
 - [x] Clean
+- [x] KFold
 - [x] Stratified-KFold
 - [x] Exchange query-reply pair order
 - [x] Delete duplicate queries and emoji

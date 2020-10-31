@@ -84,6 +84,7 @@ parser.add_argument('--pretrained_bert_name', default='bert-base-chinese', type=
 parser.add_argument("--weight_decay", default=0.00, type=float, help="Weight deay if we apply some.") # 0.01
 parser.add_argument("--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer.")
 parser.add_argument('--cross_val_fold', default=5, type=int, help='k-fold cross validation')
+parser.add_argument('--cv_type', default='StratifiedKFold', type=str, choices=['StratifiedKFold', 'KFold'])
 parser.add_argument('--max_grad_norm', type=float, default=1.0, help='clip gradients at this value')
 parser.add_argument('--cuda', default='0', type=str)
 parser.add_argument('--datatype', default=None, type=str, choices=['transdata', 'diadata', 'raw'])

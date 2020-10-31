@@ -1,6 +1,5 @@
 import os
 import torch
-from torch import sort
 import torch.nn as nn
 import random
 import logging
@@ -19,7 +18,6 @@ from lossfunc.ghmc import GHMC
 from lossfunc.diceloss import BinaryDiceLoss
 from attack import FGM, PGD
 from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif
-from sklearn.model_selection import StratifiedKFold, KFold
 from config import opt, logger, dataset_files
 from voting import vote
 from optimizer.radam import RAdam
@@ -350,7 +348,10 @@ class Instructor:
         y = df_data.loc[:, 'label'].to_numpy()
 
         max_f1_list = []
-        skf = StratifiedKFold(n_splits=opt.cross_val_fold, shuffle=True, random_state=opt.seed)
+        if opt.cv_type == 'KFold':
+            skf = KFold(n_splits=opt.cross_val_fold, shuffle=True, random_state=opt.seed)
+        elif opt.cv_type == 'StratifiedKFold':
+            skf = StratifiedKFold(n_splits=opt.cross_val_fold, shuffle=True, random_state=opt.seed)
         for kfold, (train_index, dev_index) in enumerate(skf.split(X, y)):
             logger.info("kfold: {}".format(kfold + 1))
             df_train_data = df_data.iloc[train_index]
