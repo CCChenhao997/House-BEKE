@@ -45,7 +45,6 @@ def search_f1(y_true, y_pred):
 def ratio(label_path):
     df = pd.read_csv(label_path, sep='\t', header=None, encoding='utf-8', engine='python')
     df.columns=['id','id_sub', 'label']
-
     logger.info("预测标签比例为:")
     logger.info(df['label'].value_counts())
 
@@ -160,7 +159,10 @@ class Instructor:
     def _train(self, model, df_train_data, df_dev_data):
         trainset = BertSentenceDataset(df_train_data, self.tokenizer)
         devset = BertSentenceDataset(df_dev_data, self.tokenizer)
-        train_dataloader = DataLoader(dataset=trainset, batch_size=opt.train_batch_size, shuffle=True, drop_last=True)
+        if opt.cv_type == 'KFold':
+            train_dataloader = DataLoader(dataset=trainset, batch_size=opt.train_batch_size, shuffle=False, drop_last=False)
+        else:
+            train_dataloader = DataLoader(dataset=trainset, batch_size=opt.train_batch_size, shuffle=True, drop_last=False)
         dev_dataloader = DataLoader(dataset=devset, batch_size=opt.eval_batch_size, shuffle=False)
 
         # 对抗训练

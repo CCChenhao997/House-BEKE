@@ -5,6 +5,7 @@
 #### Tricks
 
 - [x] F1 search
+- [ ] Each fold model uses the same threshold
 - [x] Focalloss
 - [x] GHM-C loss
 - [x] DiceLoss
@@ -44,6 +45,7 @@
 - [ ] Cluster analysis for queries & Multi-task learning
 - [ ] Back translation
 - [ ] Split reply that exceeds the maximum length
+- [ ] LaserTagger [[link]](https://github.com/Mleader2/text_scalpel)
 
 #### Papers
 
