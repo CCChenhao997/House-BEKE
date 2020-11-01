@@ -9,7 +9,7 @@ from time import strftime, localtime
 import numpy as np
 import pandas as pd
 from sklearn import metrics
-from sklearn.model_selection import StratifiedKFold, KFold
+from sklearn.model_selection import StratifiedKFold, KFold, GroupKFold
 from transformers import BertModel, AdamW, get_linear_schedule_with_warmup
 from torch.utils.data import DataLoader
 from torch.nn.utils import clip_grad_norm_
@@ -348,13 +348,21 @@ class Instructor:
         df_data = df_data[['id', 'q1', 'id_sub', 'q2', 'label']]
         X = np.array(df_data.index)
         y = df_data.loc[:, 'label'].to_numpy()
+        groups = df_data.loc[:, 'id'].to_numpy()
 
         max_f1_list = []
+        kfold_data = None
         if opt.cv_type == 'KFold':
-            skf = KFold(n_splits=opt.cross_val_fold, shuffle=True, random_state=opt.seed)
+            skf = KFold(n_splits=opt.cross_val_fold, shuffle=False, random_state=opt.seed)
+            kfold_data = skf.split(X, y)
         elif opt.cv_type == 'StratifiedKFold':
             skf = StratifiedKFold(n_splits=opt.cross_val_fold, shuffle=True, random_state=opt.seed)
-        for kfold, (train_index, dev_index) in enumerate(skf.split(X, y)):
+            kfold_data = skf.split(X, y)
+        elif opt.cv_type == 'GroupKFold':
+            skf = GroupKFold(n_splits=opt.cross_val_fold)
+            kfold_data = skf.split(X, y, groups=groups)
+
+        for kfold, (train_index, dev_index) in enumerate(kfold_data):
             logger.info("kfold: {}".format(kfold + 1))
             df_train_data = df_data.iloc[train_index]
             df_dev_data = df_data.iloc[dev_index]

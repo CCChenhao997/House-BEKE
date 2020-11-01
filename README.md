@@ -39,7 +39,8 @@
 - [x] Truncation
 - [x] Clean
 - [x] KFold
-- [x] Stratified-KFold
+- [x] StratifiedKFold
+- [x] GroupKFold
 - [x] Exchange query-reply pair order
 - [x] Delete duplicate queries and emoji
 - [ ] Cluster analysis for queries & Multi-task learning
