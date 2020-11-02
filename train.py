@@ -198,10 +198,10 @@ class Instructor:
 
         max_f1, global_step = 0, 0
         self.best_model = None
+        best_threshold = 0
         for epoch in range(opt.num_epoch):
             logger.info('>' * 60)
             logger.info('epoch: {}'.format(epoch))
-            best_threshold = 0
             targets_all, outputs_all = [], []
             for i_batch, sample_batched in enumerate(train_dataloader):
                 global_step += 1
@@ -418,6 +418,7 @@ class Instructor:
             max_f1, model_path, best_threshold = self._train(model, df_train_data, df_dev_data)
             max_f1_list.append(max_f1)
             logger.info('max_f1: {:.4f}'.format(max_f1))
+            logger.info('best_threshold: {:.2f}'.format(best_threshold))
 
             if opt.notsavemodel:
                 txt_path = model_path + "-kfold-{}-".format(kfold+1) + strftime("%Y-%m-%d_%H:%M:%S", localtime()) + '.txt'
