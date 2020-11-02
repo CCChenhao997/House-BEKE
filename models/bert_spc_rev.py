@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 
 
-class Bert_Spc(nn.Module):
+class Bert_Spc_Rev(nn.Module):
     def __init__(self, bert, opt):
-        super(Bert_Spc, self).__init__()
+        super(Bert_Spc_Rev, self).__init__()
         self.opt = opt
         self.bert = bert
         self.dropout = nn.Dropout(opt.dropout)
@@ -18,5 +18,5 @@ class Bert_Spc(nn.Module):
         pooled_output = self.dropout(pooled_output)
         logits = self.dense(pooled_output)
         logits = torch.sigmoid(logits)
-        
+
         return logits

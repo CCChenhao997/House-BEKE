@@ -12,7 +12,6 @@ class Bert_RNN(nn.Module):
         layers = [nn.Linear(
             opt.bert_dim, opt.bert_dim // 2), nn.ReLU(), nn.Linear(opt.bert_dim // 2, opt.label_dim)]
         self.dense = nn.Sequential(*layers)
-        self.order_dense = nn.Linear(opt.bert_dim, opt.order_dim)
         self.rnn = DynamicLSTM(opt.bert_dim, opt.bert_dim // 4, num_layers=1, batch_first=True, bidirectional=True, rnn_type='LSTM')
         # self.rnn = nn.LSTM(opt.bert_dim, opt.bert_dim // 4, num_layers=1, batch_first=True, bidirectional=True)
 
@@ -26,5 +25,6 @@ class Bert_RNN(nn.Module):
         birnn_output = torch.cat((rnn_out[:, 0], rnn_out[:, -1]), -1)
 
         logits = self.dense(birnn_output)
+        logits = torch.sigmoid(logits)
         
         return logits

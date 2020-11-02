@@ -17,7 +17,7 @@ from lossfunc.focalloss import FocalLoss, FocalLossBCE
 from lossfunc.ghmc import GHMC
 from lossfunc.diceloss import BinaryDiceLoss
 from attack import FGM, PGD
-from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif
+from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif, case_data
 from config import opt, logger, dataset_files
 from voting import vote
 from optimizer.radam import RAdam
@@ -163,7 +163,7 @@ class Instructor:
             train_dataloader = DataLoader(dataset=trainset, batch_size=opt.train_batch_size, shuffle=False, drop_last=False)
         else:
             train_dataloader = DataLoader(dataset=trainset, batch_size=opt.train_batch_size, shuffle=True, drop_last=False)
-        dev_dataloader = DataLoader(dataset=devset, batch_size=opt.eval_batch_size, shuffle=False)
+        self.dev_dataloader = DataLoader(dataset=devset, batch_size=opt.eval_batch_size, shuffle=False)
 
         # 对抗训练
         if opt.attack_type == 'fgm':
@@ -252,7 +252,7 @@ class Instructor:
 
                 if global_step % opt.log_step == 0:    # 每隔opt.log_step就输出日志
                     train_acc = metrics.accuracy_score(targets_all, outputs_all)
-                    test_acc, f1, threshold = self._evaluate(model, dev_dataloader)
+                    test_acc, f1, threshold = self._evaluate(model, self.dev_dataloader)
 
                     if f1 > max_f1:
                         best_threshold = threshold
@@ -267,7 +267,7 @@ class Instructor:
                                 .format(i_batch + 1, loss.item(), train_acc, test_acc, f1, threshold))
 
         logger.info('#' * 100)
-        self._evaluate(self.best_model, dev_dataloader, show_results=True)
+        self._evaluate(self.best_model, self.dev_dataloader, show_results=True)
         return max_f1, model_path, best_threshold
     
     def _evaluate(self, model, dev_dataloader, show_results=False):
@@ -336,6 +336,35 @@ class Instructor:
         self.submit.to_csv(save_path, columns=['id', 'id_sub', 'label'], index=False, header=False, sep='\t')
         logger.info("预测成功！")
         ratio(save_path)
+
+    def _casestudy(self, rawdata, dataset, model, best_threshold, max_f1, kfold, reverse=False):
+        model.eval()
+        targets_all, outputs_all = None, None
+        with torch.no_grad():
+            for batch, sample_batched in enumerate(dataset):
+                inputs = [sample_batched[col].to(opt.device) for col in opt.inputs_cols]
+                outputs = model(inputs)
+                outputs_all = torch.cat((outputs_all, outputs), dim=0) if outputs_all is not None else outputs
+
+        hardlabel = (outputs_all.cpu() >= best_threshold)
+        softlabel = outputs_all.cpu().squeeze().tolist()
+        query_id_list, query_list, query_id_sub_list, reply_list, label_list = case_data(rawdata)
+        result = {'id': query_id_list, 'q1': query_list, 'id_sub': query_id_sub_list, 
+                  'q2':reply_list, 'label': label_list, 'hardlabel': hardlabel, 'softlabel': softlabel}
+        
+        df_result = pd.DataFrame(result)
+        df_result['softlabel'] = df_result['softlabel'].round(4)
+        df_result['predict_correct'] = df_result.apply(lambda x: x['label'] == x['hardlabel'], axis=1)
+
+        DATA_DIR = './results/{}-cuda-{}/casestudy/'.format(opt.model_name, opt.cuda)
+        if not os.path.exists(DATA_DIR):
+            os.makedirs(DATA_DIR, mode=0o777)
+        if reverse:
+            save_path = DATA_DIR + '{}-reverse-fold-f1_{:.4f}-{}.tsv'.format(kfold, max_f1, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
+        else:
+            save_path = DATA_DIR + '{}-fold-f1_{:.4f}-{}.tsv'.format(kfold, max_f1, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
+        df_result.to_csv(save_path, index=False, sep='\t')
+        logger.info("Case study 预测成功！")
     
     def run(self, query_path, reply_path):
         # * trainset & devset
@@ -396,6 +425,8 @@ class Instructor:
                 torch.save(self.best_model.state_dict(), model_path)
             logger.info('>> saved: {}'.format(model_path))
             self._predict(self.test_dataloader, self.best_model, best_threshold, max_f1, kfold + 1)
+            self._casestudy(df_dev_data, self.dev_dataloader, self.best_model, best_threshold, max_f1, kfold + 1)
+
             if opt.datareverse:
                 self._predict(self.test_dataloader_reverse, self.best_model, best_threshold, max_f1, kfold + 1, reverse=True)
             logger.info('=' * 60)

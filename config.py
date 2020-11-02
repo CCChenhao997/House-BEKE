@@ -110,6 +110,7 @@ parser.add_argument('--datareverse', default=False, action='store_true')
 parser.add_argument('--start', default=20, type=int)
 parser.add_argument('--end', default=60, type=int)
 parser.add_argument('--optimizer', default='AdamW', type=str, choices=['AdamW', 'RAdam'])
+parser.add_argument('--drop_duplicates', default=False, action='store_true')
 opt = parser.parse_args()
 opt.model_class = model_classes[opt.model_name]
 opt.inputs_cols = input_colses[opt.model_name]

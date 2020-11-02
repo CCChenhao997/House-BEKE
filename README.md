@@ -105,6 +105,10 @@
 11. 0.78496868476 | bert_spc | ERNIE-TAPT | Search_f1 | StratifiedKFold 7-fold voting | BCE loss | FGM | **batchsize=32**
 
     `python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 3  --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --train_batch_size 32`
+    
+12. **0.79014267185** | bert_spc | ERNIE-ALL-TAPT | Search_f1 | GroupKFold 7-fold voting | BCE loss | FGM 
+
+    `python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold`
 
 ----------------------
 

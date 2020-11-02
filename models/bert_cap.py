@@ -54,5 +54,6 @@ class Bert_Cap(nn.Module):
         intermediate = F.gelu(self.linear1(fused_hidden))
         final_output = torch.cat((pooled_output, intermediate), dim=-1)
         logits = self.dense(final_output)
+        logits = torch.sigmoid(logits)
 
         return logits

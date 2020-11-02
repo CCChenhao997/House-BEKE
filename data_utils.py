@@ -16,7 +16,7 @@ def get_time_dif(start_time):
 def parse_data(df_data, test=False):
 
     # 训练集中reply去重
-    if not test:
+    if not test and opt.drop_duplicates:
         df_data = df_data.groupby('q1', as_index=False).apply(lambda df: df.drop_duplicates('q2', keep='first'))
         # df_data = df_data.groupby('id', as_index=False).apply(lambda df: df.drop_duplicates('q2', keep=False))
 
@@ -65,32 +65,6 @@ def parse_data(df_data, test=False):
                 else:
                     query = query[: opt.max_length // 2]
                     reply = reply[: opt.max_length // 2]
-
-                # * 测试阶段怎么处理?
-                # if len(query) <= len(reply) and len(query) <= (opt.max_length // 2):
-                #     reply1, reply2 = reply[: len(reply) // 2], reply[len(reply) // 2: ]
-                #     data = {'query_id': query_id, 'query': query, 'reply': reply1, 'label': label}
-                #     all_data.append(data)
-                #     data = {'query_id': query_id, 'query': query, 'reply': reply2, 'label': label}
-                #     all_data.append(data)
-                # elif len(query) > len(reply) and len(reply) <= (opt.max_length // 2):
-                #     query1, query2 = query[: len(query) // 2], query[len(query) // 2: ]
-                #     data = {'query_id': query_id, 'query': query1, 'reply': reply, 'label': label}
-                #     all_data.append(data)
-                #     data = {'query_id': query_id, 'query': query2, 'reply': reply, 'label': label}
-                #     all_data.append(data)
-                # else:
-                #     query1, query2 = query[: len(query) // 2], query[len(query) // 2: ]
-                #     reply1, reply2 = reply[: len(reply) // 2], reply[len(reply) // 2: ]
-                #     data = {'query_id': query_id, 'query': query, 'reply': reply1, 'label': label}
-                #     all_data.append(data)
-                #     data = {'query_id': query_id, 'query': query, 'reply': reply2, 'label': label}
-                #     all_data.append(data)
-                #     data = {'query_id': query_id, 'query': query1, 'reply': reply, 'label': label}
-                #     all_data.append(data)
-                #     data = {'query_id': query_id, 'query': query2, 'reply': reply, 'label': label}
-                #     all_data.append(data)
-                # continue
   
         except:
             logger.info('{}'.format(line))
@@ -106,6 +80,55 @@ def parse_data(df_data, test=False):
 
     logger.info('样本数: {}'.format(len(all_data)))
     return all_data
+
+
+def case_data(df_data):
+
+    df_data = df_data.groupby('q1', as_index=False).apply(lambda df: df.drop_duplicates('q2', keep='first'))
+    # df_data = df_data.groupby('id', as_index=False).apply(lambda df: df.drop_duplicates('q2', keep=False))
+
+    query_id_list, query_list, query_id_sub_list, reply_list, label_list = [], [], [], [], []
+    pattern = re.compile(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
+    # id    q1  id_sub	q2	label
+    for idx, line in df_data.iterrows():
+        try:
+            query_id = line[0]
+            query = line[1].strip()
+            query = re.sub(pattern, '链接', query)
+            query = re.sub(r'\s+', ' ', query)
+            query_id_sub = line[2]
+            reply = line[3].strip()
+            reply = re.sub(pattern, '链接', reply)
+            reply = re.sub(r'\s+', ' ', reply)
+            label = line[4]
+
+            # 去除emoji
+            query = re.sub(u'[\U00010000-\U0010ffff]', '', query)
+            reply = re.sub(u'[\U00010000-\U0010ffff]', '', reply)
+            if len(query) == 0 or len(reply) == 0:
+                continue
+
+            # 句子长度截断处理
+            while len(query) + len(reply) > opt.max_length:
+                if len(query) <= len(reply) and len(query) <= (opt.max_length // 2):
+                    reply = reply[: opt.max_length - len(query)]
+                elif len(query) > len(reply) and len(reply) <= (opt.max_length // 2):
+                    query = query[: opt.max_length - len(reply)]
+                else:
+                    query = query[: opt.max_length // 2]
+                    reply = reply[: opt.max_length // 2]
+  
+        except:
+            logger.info('{}'.format(line))
+            exit()
+
+        query_id_list.append(query_id)
+        query_list.append(query)
+        query_id_sub_list.append(query_id_sub)
+        reply_list.append(reply)
+        label_list.append(label)
+
+    return query_id_list, query_list, query_id_sub_list, reply_list, label_list
 
 
 class Tokenizer4Bert(object):

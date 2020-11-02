@@ -16,7 +16,6 @@ class Dual_Bert(nn.Module):
         layers = [nn.Linear(
             opt.bert_dim*2, opt.bert_dim), nn.ReLU(), nn.Linear(opt.bert_dim, opt.label_dim)]
         self.dense = nn.Sequential(*layers)
-        self.order_dense = nn.Linear(opt.bert_dim, opt.order_dim)
         self.rnn = nn.GRU(opt.bert_dim, opt.bert_dim//2, num_layers=1, batch_first=True, bidirectional=True)
 
     def forward(self, inputs):
@@ -33,5 +32,6 @@ class Dual_Bert(nn.Module):
         rnn_out, _ = self.rnn(pair)                                 # (16, 2, 768)
         rnn_cat = torch.cat((rnn_out[:, 0, :], rnn_out[:, 1, :]), dim=-1)   # (16, 768*2)
         logits = self.dense(rnn_cat)
+        logits = torch.sigmoid(logits)
         
         return logits
