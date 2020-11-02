@@ -84,8 +84,9 @@ def parse_data(df_data, test=False):
 
 def case_data(df_data):
 
-    df_data = df_data.groupby('q1', as_index=False).apply(lambda df: df.drop_duplicates('q2', keep='first'))
-    # df_data = df_data.groupby('id', as_index=False).apply(lambda df: df.drop_duplicates('q2', keep=False))
+    if opt.drop_duplicates:
+        df_data = df_data.groupby('q1', as_index=False).apply(lambda df: df.drop_duplicates('q2', keep='first'))
+        # df_data = df_data.groupby('id', as_index=False).apply(lambda df: df.drop_duplicates('q2', keep=False))
 
     query_id_list, query_list, query_id_sub_list, reply_list, label_list = [], [], [], [], []
     pattern = re.compile(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')

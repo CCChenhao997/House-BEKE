@@ -347,6 +347,7 @@ class Instructor:
                 outputs_all = torch.cat((outputs_all, outputs), dim=0) if outputs_all is not None else outputs
 
         hardlabel = (outputs_all.cpu() >= best_threshold)
+        hardlabel = hardlabel.squeeze().long().tolist()
         softlabel = outputs_all.cpu().squeeze().tolist()
         query_id_list, query_list, query_id_sub_list, reply_list, label_list = case_data(rawdata)
         result = {'id': query_id_list, 'q1': query_list, 'id_sub': query_id_sub_list, 
