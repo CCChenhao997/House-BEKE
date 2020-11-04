@@ -14,16 +14,18 @@
 - [x] K-fold voting (5-7-9 fold)
 - [ ] Fusion of multiple models
 - [ ] Pseudo label [[reference]](https://github.com/zzy99/epidemic-sentence-pair)
-- [x] RAdam optimizer
+- [x] Optimizers
+- [ ] Multiple loss: accelerate convergence in the early stage and improve accuracy in the later stage.
 - [ ] Reverse query-reply
 
 #### Methods
 
-- [x] bert
+- [x] Bert
 - [x] Double bert + LSTM (Double bert model query and reply respectively, then a BiLSTM model the relation between them)
 - [ ] LCF [[link]](https://www.mdpi.com/2076-3417/9/16/3389)
 - [ ] Semantic Role Labeling
 - [x] Auxiliary task: Identify query-reply or reply-query
+- [x] Bert+GCN
 
 #### Pre-training language models
 
@@ -55,7 +57,7 @@
 
 #### Analysis
 
-- [ ] Prediction results of dev set
+- [x] Prediction results of dev set
 - [ ] Prediction results of test set
 
 -----------------------------
@@ -109,6 +111,10 @@
 12. **0.79014267185** | bert_spc | ERNIE-ALL-TAPT | Search_f1 | GroupKFold 7-fold voting | BCE loss | FGM 
 
     `python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold`
+
+13. **0.79081172** | bert_spc | ERNIE-ALL-TAPT | Search_f1 | GroupKFold 7-fold voting | GHMC loss | FGM 
+
+    `python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 2 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc`
 
 ----------------------
 

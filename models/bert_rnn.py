@@ -25,6 +25,6 @@ class Bert_RNN(nn.Module):
         birnn_output = torch.cat((rnn_out[:, 0], rnn_out[:, -1]), -1)
 
         logits = self.dense(birnn_output)
-        logits = torch.sigmoid(logits)
+        # logits = torch.sigmoid(logits)
         
         return logits

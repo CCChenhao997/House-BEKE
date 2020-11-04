@@ -17,6 +17,6 @@ class Bert_Spc(nn.Module):
         _, pooled_output, all_hidden_states = self.bert(text_bert_indices, attention_mask=attention_mask, token_type_ids=bert_segments_ids)
         pooled_output = self.dropout(pooled_output)
         logits = self.dense(pooled_output)
-        logits = torch.sigmoid(logits)
+        # logits = torch.sigmoid(logits)
         
         return logits

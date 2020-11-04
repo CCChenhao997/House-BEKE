@@ -32,6 +32,6 @@ class Dual_Bert(nn.Module):
         rnn_out, _ = self.rnn(pair)                                 # (16, 2, 768)
         rnn_cat = torch.cat((rnn_out[:, 0, :], rnn_out[:, 1, :]), dim=-1)   # (16, 768*2)
         logits = self.dense(rnn_cat)
-        logits = torch.sigmoid(logits)
+        # logits = torch.sigmoid(logits)
         
         return logits

@@ -17,10 +17,12 @@ from lossfunc.focalloss import FocalLoss, FocalLossBCE
 from lossfunc.ghmc import GHMC
 from lossfunc.diceloss import BinaryDiceLoss
 from attack import FGM, PGD
-from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif, case_data
+from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif, case_data, collate_wrapper
 from config import opt, logger, dataset_files
 from voting import vote
 from optimizer.radam import RAdam
+from optimizer.ranger import Ranger
+from optimizer.lookahead import Lookahead
 
 
 def setup_seed(seed):
@@ -67,9 +69,12 @@ class Instructor:
         df_test_data = df_test_query.merge(df_test_reply, how='left')
         self.submit = copy.deepcopy(df_test_reply)
         self.pseudo = copy.deepcopy(df_test_data)
-
         testset = BertSentenceDataset(df_test_data, self.tokenizer, test=True)
-        self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.eval_batch_size, shuffle=False)
+
+        if opt.dialogue:
+            self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.eval_batch_size, shuffle=False, collate_fn=collate_wrapper)
+        else:
+            self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.eval_batch_size, shuffle=False)
 
         if opt.datareverse:
             df_test_data_reverse = copy.deepcopy(df_test_data[['id', 'q2', 'id_sub', 'q1']])
@@ -128,12 +133,17 @@ class Instructor:
                     "lr": opt.layers_lr
                 },
             ]
+
+            # 选择优化器
             if opt.optimizer == 'AdamW':
                 optimizer = AdamW(optimizer_grouped_parameters, eps=opt.adam_epsilon)
                 logger.info("Choose AdamW")
             elif opt.optimizer == 'RAdam':
                 optimizer = RAdam(optimizer_grouped_parameters, eps=opt.adam_epsilon)
                 logger.info("Choose RAdam")
+            elif opt.optimizer == 'Ranger':
+                optimizer = Ranger(optimizer_grouped_parameters, eps=opt.adam_epsilon)
+                logger.info("Choose Ranger")
             else:
                 logger.info("Please input correct optimizer!")
         else:
@@ -144,13 +154,16 @@ class Instructor:
                 {'params': [p for n, p in model.named_parameters() if any(
                     nd in n for nd in no_decay)], 'weight_decay': 0.0}
             ]
-
+            # 选择优化器
             if opt.optimizer == 'AdamW':
                 optimizer = AdamW(optimizer_grouped_parameters, lr=opt.bert_lr, eps=opt.adam_epsilon)   #  weight_decay=opt.l2reg
                 logger.info("Choose AdamW")
             elif opt.optimizer == 'RAdam':
                 optimizer = RAdam(optimizer_grouped_parameters, lr=opt.bert_lr, eps=opt.adam_epsilon)
                 logger.info("Choose RAdam")
+            elif opt.optimizer == 'Ranger':
+                optimizer = Ranger(optimizer_grouped_parameters, lr=opt.bert_lr, eps=opt.adam_epsilon)
+                logger.info("Choose Ranger")
             else:
                 logger.info("Please input correct optimizer!")
 
@@ -159,11 +172,12 @@ class Instructor:
     def _train(self, model, df_train_data, df_dev_data):
         trainset = BertSentenceDataset(df_train_data, self.tokenizer)
         devset = BertSentenceDataset(df_dev_data, self.tokenizer)
-        if opt.cv_type == 'KFold':
-            train_dataloader = DataLoader(dataset=trainset, batch_size=opt.train_batch_size, shuffle=False, drop_last=False)
+        if opt.dialogue:
+            train_dataloader = DataLoader(dataset=trainset, batch_size=opt.train_batch_size, shuffle=True, drop_last=False, collate_fn=collate_wrapper)
+            self.dev_dataloader = DataLoader(dataset=devset, batch_size=opt.eval_batch_size, shuffle=False, collate_fn=collate_wrapper)
         else:
             train_dataloader = DataLoader(dataset=trainset, batch_size=opt.train_batch_size, shuffle=True, drop_last=False)
-        self.dev_dataloader = DataLoader(dataset=devset, batch_size=opt.eval_batch_size, shuffle=False)
+            self.dev_dataloader = DataLoader(dataset=devset, batch_size=opt.eval_batch_size, shuffle=False)
 
         # 对抗训练
         if opt.attack_type == 'fgm':
@@ -190,6 +204,8 @@ class Instructor:
             criterion = nn.BCEWithLogitsLoss()
 
         optimizer = self.get_bert_optimizer(opt, model)
+        if opt.lookahead:
+            optimizer = Lookahead(optimizer=optimizer, la_steps=5, la_alpha=0.5)
 
         if opt.scheduler:
             logger.info('使用scheduler')
@@ -203,31 +219,53 @@ class Instructor:
             logger.info('>' * 60)
             logger.info('epoch: {}'.format(epoch))
             targets_all, outputs_all = [], []
+            optimizer.zero_grad()
             for i_batch, sample_batched in enumerate(train_dataloader):
                 global_step += 1
                 # switch model to training mode, clear gradient accumulators
                 model.train()
-                optimizer.zero_grad()
+                # optimizer.zero_grad()
                 inputs = [sample_batched[col].to(opt.device) for col in opt.inputs_cols]
 
-                outputs = model(inputs)
+                penal = None
+                if opt.dialogue:
+                    outputs, penal = model(inputs)
+                else:
+                    outputs = model(inputs)
                 targets = sample_batched['label'].to(opt.device)
                 targets = targets.view(-1, 1).float()
 
-                outputs_all.extend(list(np.array(outputs.cpu() >= opt.threshold, dtype='int')))
+                outputs_sigm = torch.sigmoid(outputs)
+                outputs_all.extend(list(np.array(outputs_sigm.cpu() >= opt.threshold, dtype='int')))
                 targets_all.extend(list(targets.cpu().detach().numpy()))
                 
-                loss = criterion(outputs, targets)
+                if opt.dialogue:
+                    loss = criterion(outputs, targets) + penal
+                else:
+                    loss = criterion(outputs, targets)
+
+                # 多重loss
+                if opt.multi_loss and epoch > 1 and opt.criterion is None:
+                    loss += GHMC()(outputs, targets)
 
                 if opt.flooding > 0: # flooding
                     loss = (loss - opt.flooding).abs() + opt.flooding
-
+                
+                # 梯度累加
+                if opt.dialogue and opt.accmulate_grad:
+                    loss = loss / opt.accumulation_steps
                 loss.backward()
 
                 if opt.attack_type == 'fgm':
                     fgm.attack()  ##对抗训练
-                    outputs = model(inputs)
+                    if opt.dialogue:
+                        outputs, penal = model(inputs)
+                    else:
+                        outputs = model(inputs)
                     loss_adv = criterion(outputs, targets)
+                    # 梯度累加
+                    if opt.dialogue and opt.accmulate_grad:
+                        loss_adv = loss_adv / opt.accumulation_steps
                     loss_adv.backward()
                     fgm.restore()
 
@@ -240,15 +278,29 @@ class Instructor:
                         else:
                             pgd.restore_grad()
                         
-                        outputs = model(inputs)
+                        if opt.dialogue:
+                            outputs, penal = model(inputs)
+                        else:
+                            outputs = model(inputs)
                         loss_adv = criterion(outputs, targets)
+                        # 梯度累加
+                        if opt.dialogue and opt.accmulate_grad:
+                            loss_adv = loss_adv / opt.accumulation_steps
                         loss_adv.backward()              # 反向传播，并在正常的grad基础上，累加对抗训练的梯度
                     pgd.restore()                        # 恢复embedding参数
                 
                 # torch.nn.utils.clip_grad_norm_(model.parameters(), opt.max_grad_norm)
-                optimizer.step()
-                if opt.scheduler:
-                    scheduler.step()
+
+                if opt.dialogue and opt.accmulate_grad and (i_batch % opt.accumulation_steps == 0):       # 重复多次前面的过程
+                    optimizer.step()                                # 更新梯度
+                    if opt.scheduler:
+                        scheduler.step()
+                    optimizer.zero_grad()                           # 重置梯度
+                else:
+                    optimizer.step()
+                    if opt.scheduler:
+                        scheduler.step()
+                    optimizer.zero_grad()
 
                 if global_step % opt.log_step == 0:    # 每隔opt.log_step就输出日志
                     train_acc = metrics.accuracy_score(targets_all, outputs_all)
@@ -278,8 +330,12 @@ class Instructor:
             for batch, sample_batched in enumerate(dev_dataloader):
                 inputs = [sample_batched[col].to(opt.device) for col in opt.inputs_cols]
                 targets = sample_batched['label'].to(opt.device)
-                outputs = model(inputs)
+                if opt.dialogue:
+                    outputs, penal = model(inputs)
+                else:
+                    outputs = model(inputs)
                 
+                outputs = torch.sigmoid(outputs)
                 targets_all = torch.cat((targets_all, targets), dim=0) if targets_all is not None else targets
                 outputs_all = torch.cat((outputs_all, outputs), dim=0) if outputs_all is not None else outputs
 
@@ -316,7 +372,11 @@ class Instructor:
         with torch.no_grad():
             for batch, sample_batched in enumerate(dataset):
                 inputs = [sample_batched[col].to(opt.device) for col in opt.inputs_cols]
-                outputs = model(inputs)
+                if opt.dialogue:
+                    outputs, penal = model(inputs)
+                else:
+                    outputs = model(inputs)
+                outputs = torch.sigmoid(outputs)
                 outputs_all = torch.cat((outputs_all, outputs), dim=0) if outputs_all is not None else outputs
 
         predict = (outputs_all.cpu() >= best_threshold)
@@ -343,7 +403,11 @@ class Instructor:
         with torch.no_grad():
             for batch, sample_batched in enumerate(dataset):
                 inputs = [sample_batched[col].to(opt.device) for col in opt.inputs_cols]
-                outputs = model(inputs)
+                if opt.dialogue:
+                    outputs, penal = model(inputs)
+                else:
+                    outputs = model(inputs)
+                outputs = torch.sigmoid(outputs)
                 outputs_all = torch.cat((outputs_all, outputs), dim=0) if outputs_all is not None else outputs
 
         hardlabel = (outputs_all.cpu() >= best_threshold)
