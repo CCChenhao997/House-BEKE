@@ -19,7 +19,7 @@ from lossfunc.diceloss import BinaryDiceLoss
 from attack import FGM, PGD
 from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif, case_data, collate_wrapper
 from config import opt, logger, dataset_files
-from voting import vote
+from voting import vote, generate_pseudo_data
 from optimizer.radam import RAdam
 from optimizer.ranger import Ranger
 from optimizer.lookahead import Lookahead
@@ -59,8 +59,8 @@ class Instructor:
         self.model = opt.model_class(bert_model, opt).to(opt.device)
 
         # * testset
-        self.test_query = test_query
-        self.test_reply = test_reply
+        # self.test_query = test_query
+        # self.test_reply = test_reply
         df_test_query = pd.read_csv(test_query, sep='\t', header=None, encoding='utf-8', engine='python')
         df_test_query.columns=['id','q1']
         df_test_reply = pd.read_csv(test_reply, sep='\t', header=None, encoding='utf-8', engine='python')
@@ -68,7 +68,7 @@ class Instructor:
         df_test_reply['q2'] = df_test_reply['q2'].fillna('好的')
         df_test_data = df_test_query.merge(df_test_reply, how='left')
         self.submit = copy.deepcopy(df_test_reply)
-        self.pseudo = copy.deepcopy(df_test_data)
+        # self.pseudo = copy.deepcopy(df_test_data)
         testset = BertSentenceDataset(df_test_data, self.tokenizer, test=True)
 
         if opt.dialogue:
@@ -239,7 +239,7 @@ class Instructor:
                 outputs_all.extend(list(np.array(outputs_sigm.cpu() >= opt.threshold, dtype='int')))
                 targets_all.extend(list(targets.cpu().detach().numpy()))
                 
-                if opt.dialogue:
+                if opt.dialogue and opt.regular:
                     loss = criterion(outputs, targets) + penal
                 else:
                     loss = criterion(outputs, targets)
@@ -463,18 +463,23 @@ class Instructor:
             logger.info("df_train_data: {}".format(df_train_data.shape))
 
             if opt.add_pseudo_data:
-                df_pseudo_label = pd.read_csv(opt.pseudo_path, sep='\t', header=None, encoding='utf-8', engine='python')
-                df_pseudo_label.columns=['id','id_sub', 'label']
-                df_pseudo = copy.deepcopy(self.pseudo)
-                df_pseudo['label'] = df_pseudo_label['label']
+                # df_pseudo_label = pd.read_csv(opt.pseudo_path, sep='\t', header=None, encoding='utf-8', engine='python')
+                # df_pseudo_label.columns=['id','id_sub', 'label']
+                # df_pseudo = copy.deepcopy(self.pseudo)
+                # df_pseudo['label'] = df_pseudo_label['label']
+                df_pseudo_pos, df_pseudo_neg = generate_pseudo_data(opt.dataset_file['test_query'], opt.dataset_file['test_reply'], opt.pseudo_path)
 
                 if opt.pos_num > 0:
-                    df_pseudo_pos = df_pseudo[df_pseudo['label'] == 1].sample(n=opt.pos_num, random_state=kfold)
-                    df_train_data = df_train_data.append(df_pseudo_pos)
+                    # df_pseudo_pos = df_pseudo[df_pseudo['label'] == 1].sample(n=opt.pos_num, random_state=kfold)
+                    # df_train_data = df_train_data.append(df_pseudo_pos)
+                    df_pseudo_pos_samples = df_pseudo_pos.sample(n=opt.pos_num, random_state=kfold)
+                    df_train_data = df_train_data.append(df_pseudo_pos_samples, sort=False)
 
                 if opt.neg_num > 0:
-                    df_pseudo_neg = df_pseudo[df_pseudo['label'] == 0].sample(n=opt.neg_num, random_state=kfold)
-                    df_train_data.append(df_pseudo_neg, sort=False)
+                    # df_pseudo_neg = df_pseudo[df_pseudo['label'] == 0].sample(n=opt.neg_num, random_state=kfold)
+                    # df_train_data.append(df_pseudo_neg, sort=False)
+                    df_pseudo_neg_samples = df_pseudo_neg.sample(n=opt.neg_num, random_state=kfold)
+                    df_train_data = df_train_data.append(df_pseudo_neg_samples, sort=False)
 
                 logger.info("df_train_data_add_pseudo: {}".format(df_train_data.shape))
 

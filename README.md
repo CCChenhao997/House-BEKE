@@ -49,6 +49,7 @@
 - [ ] Back translation
 - [ ] Split reply that exceeds the maximum length
 - [ ] LaserTagger [[link]](https://github.com/Mleader2/text_scalpel)
+- [ ] Random Mask
 
 #### Papers
 

@@ -22,7 +22,7 @@ class Bert_Dialogue(nn.Module):
         #     # self.W.append(nn.Linear(input_dim, self.mem_dim))
         #     self.W.append(nn.Linear(opt.bert_dim, opt.bert_dim))
         
-        self.heads = 1
+        self.heads = opt.heads
         # self.head_dim = self.mem_dim // self.opt.GCN_layers
         # self.head_dim = opt.bert_dim // self.opt.GCN_layers
         # self.attn = MultiHeadAttention(self.heads, self.mem_dim*2)
@@ -68,19 +68,21 @@ class Bert_Dialogue(nn.Module):
         gcn_output = torch.cat(multi_head_list, dim=2) if len(multi_head_list) > 1 else multi_head_list[0]
         gcn_output = gcn_output.squeeze(0)
         logits = self.dense(gcn_output)
-
+        
+        penal = None
+        if self.opt.regular:
         # * 正交正则
-        adj_T = adj.transpose(1, 2)
-        identity = torch.eye(adj.size(1)).cuda()
-        identity = identity.unsqueeze(0).expand(adj.size(0), adj.size(1), adj.size(1))
-        ortho = adj@adj_T
+            adj_T = adj.transpose(1, 2)
+            identity = torch.eye(adj.size(1)).cuda()
+            identity = identity.unsqueeze(0).expand(adj.size(0), adj.size(1), adj.size(1))
+            ortho = adj@adj_T
 
-        for i in range(ortho.size(0)):
-            ortho[i] -= torch.diag(torch.diag(ortho[i]))
-            ortho[i] += torch.eye(ortho[i].size(0)).cuda()
+            for i in range(ortho.size(0)):
+                ortho[i] -= torch.diag(torch.diag(ortho[i]))
+                ortho[i] += torch.eye(ortho[i].size(0)).cuda()
 
-        penal = (torch.norm(ortho - identity) / adj.size(0)).cuda()
-        penal = self.opt.penal_weight * penal
+            penal = (torch.norm(ortho - identity) / adj.size(0)).cuda()
+            penal = self.opt.penal_weight * penal
         
         return logits, penal
 

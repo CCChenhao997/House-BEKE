@@ -89,14 +89,14 @@ def parse_data(df_data, test=False):
             reply = re.sub(r'\s+', ' ', reply)
 
             # 去除emoji
-            if not test:
-                query = re.sub(u'[\U00010000-\U0010ffff]', '', query)
-                reply = re.sub(u'[\U00010000-\U0010ffff]', '', reply)
-                # 去掉没有中文的样本
-                # if not re.search('[\w\u4E00-\u9FA5]+', query) or not re.search('[\w\u4E00-\u9FA5]+', reply):
-                #     continue
-                if len(query) == 0 or len(reply) == 0:
-                    continue
+            # if not test:
+            #     query = re.sub(u'[\U00010000-\U0010ffff]', '', query)
+            #     reply = re.sub(u'[\U00010000-\U0010ffff]', '', reply)
+            #     # 去掉没有中文的样本
+            #     # if not re.search('[\w\u4E00-\u9FA5]+', query) or not re.search('[\w\u4E00-\u9FA5]+', reply):
+            #     #     continue
+            #     if len(query) == 0 or len(reply) == 0:
+            #         continue
             
             if len(query) == 0 or len(reply) == 0:
                 logger.info("query or reply is empty!")
@@ -116,6 +116,9 @@ def parse_data(df_data, test=False):
                 else:
                     query = query[: opt.max_length // 2]
                     reply = reply[: opt.max_length // 2]
+            
+            if opt.PET:
+                query = '[MASK]接回答问题:' + query
   
         except:
             logger.info('{}'.format(line))
@@ -135,7 +138,7 @@ def parse_data(df_data, test=False):
 
 def case_data(df_data):
 
-    if opt.drop_duplicates:
+    if opt.drop_duplicates and not opt.dialogue:
         df_data = df_data.groupby('q1', as_index=False).apply(lambda df: df.drop_duplicates('q2', keep='first'))
         # df_data = df_data.groupby('id', as_index=False).apply(lambda df: df.drop_duplicates('q2', keep=False))
 
@@ -155,10 +158,10 @@ def case_data(df_data):
             label = line[4]
 
             # 去除emoji
-            query = re.sub(u'[\U00010000-\U0010ffff]', '', query)
-            reply = re.sub(u'[\U00010000-\U0010ffff]', '', reply)
-            if len(query) == 0 or len(reply) == 0:
-                continue
+            # query = re.sub(u'[\U00010000-\U0010ffff]', '', query)
+            # reply = re.sub(u'[\U00010000-\U0010ffff]', '', reply)
+            # if len(query) == 0 or len(reply) == 0:
+            #     continue
 
             # 句子长度截断处理
             while len(query) + len(reply) > opt.max_length:
@@ -303,17 +306,22 @@ def collate_wrapper(batch):
 
 
 if __name__ == '__main__':
-    query_path = './data/train/train.query.tsv'
-    reply_path = './data/train/train.reply.tsv'
-    df_query = pd.read_csv(query_path, sep='\t', header=None, encoding='utf-8', engine='python')
-    df_query.columns = ['id', 'q1']
-    df_reply = pd.read_csv(reply_path, sep='\t', header=None, encoding='utf-8', engine='python')
-    df_reply.columns = ['id', 'id_sub', 'q2', 'label']
-    df_reply['q2'] = df_reply['q2'].fillna('好的')
-    df_data = df_query.merge(df_reply, how='left')
-    df_data = df_data[['id', 'q1', 'id_sub', 'q2', 'label']]
-    # X = np.array(df_data.index)
-    # y = df_data.loc[:, 'label'].to_numpy()
-    # data = parse_data(df_data)
-    data = parse_data_dialogue(df_data)
-    pprint(data)
+    # query_path = './data/train/train.query.tsv'
+    # reply_path = './data/train/train.reply.tsv'
+    # df_query = pd.read_csv(query_path, sep='\t', header=None, encoding='utf-8', engine='python')
+    # df_query.columns = ['id', 'q1']
+    # df_reply = pd.read_csv(reply_path, sep='\t', header=None, encoding='utf-8', engine='python')
+    # df_reply.columns = ['id', 'id_sub', 'q2', 'label']
+    # df_reply['q2'] = df_reply['q2'].fillna('好的')
+    # df_data = df_query.merge(df_reply, how='left')
+    # df_data = df_data[['id', 'q1', 'id_sub', 'q2', 'label']]
+    # # X = np.array(df_data.index)
+    # # y = df_data.loc[:, 'label'].to_numpy()
+    # # data = parse_data(df_data)
+    # data = parse_data_dialogue(df_data)
+    # pprint(data)
+
+    pet = "[MASK]接回答问题:"
+    text = "[CLS]" + pet + "旁边有什么学校吗" + "[SEP]" + "北京邮电大学" + "[SEP]"
+    token = Tokenizer4Bert(opt.max_length, opt.pretrained_bert_name)
+    print(token.tokenizer.tokenize(text))

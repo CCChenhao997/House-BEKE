@@ -11,6 +11,7 @@ from models.dual_bert import Dual_Bert
 from models.bert_spc_rev import Bert_Spc_Rev
 from models.bert_spc_lay import Bert_Spc_Lay
 from models.bert_dialogue import Bert_Dialogue
+from models.bert_spc_pet import Bert_Spc_PET
 
 
 logger = logging.getLogger()
@@ -33,7 +34,8 @@ model_classes = {
         'dual_bert': Dual_Bert,
         'bert_spc_rev': Bert_Spc_Rev,
         'bert_spc_lay': Bert_Spc_Lay,
-        'bert_dialogue': Bert_Dialogue
+        'bert_dialogue': Bert_Dialogue,
+        'bert_spc_pet': Bert_Spc_PET
     }
 
 input_colses = {
@@ -43,7 +45,8 @@ input_colses = {
         'dual_bert': ['query_indices', 'reply_indices', 'attention_mask_query', 'attention_mask_reply'],
         'bert_spc_rev': ['dialogue_pair_indices_reverse', 'bert_segments_ids_reverse', 'attention_mask_reverse'],
         'bert_spc_lay': ['dialogue_pair_indices', 'bert_segments_ids', 'attention_mask'],
-        'bert_dialogue': ['dialogue_pair_indices', 'bert_segments_ids', 'attention_mask']
+        'bert_dialogue': ['dialogue_pair_indices', 'bert_segments_ids', 'attention_mask'],
+        'bert_spc_pet': ['dialogue_pair_indices', 'bert_segments_ids', 'attention_mask'],
     }
     
 initializers = {
@@ -114,8 +117,8 @@ parser.add_argument('--rnntype', default='LSTM', type=str, choices=['LSTM', 'GRU
 parser.add_argument('--scheduler', default=False, action='store_true')
 parser.add_argument('--notsavemodel', default=False, action='store_true')
 parser.add_argument('--datareverse', default=False, action='store_true')
-parser.add_argument('--start', default=20, type=int)
-parser.add_argument('--end', default=60, type=int)
+parser.add_argument('--start', default=30, type=int)
+parser.add_argument('--end', default=66, type=int)
 parser.add_argument('--optimizer', default='AdamW', type=str, choices=['AdamW', 'RAdam', 'Ranger'])
 parser.add_argument('--lookahead', default=False, action='store_true')
 parser.add_argument('--multi_loss', default=False, action='store_true')
@@ -125,6 +128,9 @@ parser.add_argument('--accumulation_steps', default=5, type=int)
 parser.add_argument('--accmulate_grad', default=False, action='store_true')
 parser.add_argument('--GCN_layers', default=1, type=int)
 parser.add_argument('--penal_weight', default=0.25, type=float)
+parser.add_argument('--regular', default=False, action='store_true')
+parser.add_argument('--heads', default=1, type=int)
+parser.add_argument('--PET', default=False, action='store_true')
 opt = parser.parse_args()
 opt.model_class = model_classes[opt.model_name]
 opt.inputs_cols = input_colses[opt.model_name]
