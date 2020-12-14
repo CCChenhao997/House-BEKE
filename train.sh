@@ -25,12 +25,54 @@
 
 # python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 5 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold
 
-# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc
-python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 2 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --drop_duplicates
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 2 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --drop_duplicates
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold # --criterion ghmc --drop_duplicates
 
-# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 2 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion focalloss
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --add_pseudo_data --pos_num 1000 --neg_num 1000 --pseudo_path ./results/bert_spc-cuda-2-GHMC-ERNIE-ALL-TAPT-1103/kfold/voted.tsv
 
-# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 0 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --add_pseudo_data --pos_num 1000 --neg_num 1000 --pseudo_path ./results/bert_spc-cuda-3-GroupKFold-ERNIE-ALL-TAPT-1101/kfold/voted.tsv
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 2 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --optimizer Ranger
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --lookahead
+# python train.py --model_name bert_dialogue --seed 1000 --bert_lr 1e-5 --num_epoch 3 --max_length 100 --cuda 2 --notsavemodel --log_step 100 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --train_batch_size 1 --eval_batch_size 1 --dialogue --GCN_layers 2 # --regular # --accmulate_grad
+# python train.py --model_name bert_dialogue --seed 1000 --bert_lr 3e-5 --num_epoch 3 --max_length 100 --cuda 3 --notsavemodel --log_step 100 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --train_batch_size 1 --eval_batch_size 1 --dialogue --accmulate_grad # --regular
+
+# * 2020/11/05
+# ? PET
+# python train.py --model_name bert_spc_pet --PET --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc
+# ? 伪标签
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --add_pseudo_data --pos_num 2000 --neg_num 0 --pseudo_path ./results/bert_spc-cuda-2-GHMC-ERNIE-ALL-TAPT-1103/kfold/
+# ? 十折
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 2 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 10 --cv_type GroupKFold --criterion ghmc
+
+# * 2020/11/06
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --add_pseudo_data --pos_num 500 --neg_num 0 --pseudo_path ./results/bert_spc-cuda-2-GHMC-ERNIE-ALL-TAPT-1103/kfold/
+
+# * 2020/11/07
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 2 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/bert_wwm_ext-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/roberta_wwm_ext-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --add_pseudo_data --pseudo_path ./results/bert_spc-cuda-2-GHMC-ERNIE-ALL-TAPT-1103/kfold/voted.tsv --prob_out
+
+# * 2020/11/08
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 2 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion diceloss
+
+# * 2020/11/09
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --prob_out
+
+# * 2020/11/12
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name hfl/chinese-macbert-base --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc
+# python train.py --model_name bert_spc_lay --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --prob_out
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --prob_out --add_pseudo_data --hard_sample --pos_num 1000 --neg_num 1000 --pseudo_path ./results/bert_spc-cuda-2-GHMC-ERNIE-ALL-TAPT-1103/kfold/
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 0 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --prob_out --add_pseudo_data --pos_num 1000 --neg_num 1000 --pseudo_path ./results/bert_spc-cuda-2-GHMC-ERNIE-ALL-TAPT-1103/kfold/
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --add_pseudo_data --hard_sample --pos_num 1000 --neg_num 1000 --pseudo_path ./results/bert_spc-cuda-2-GHMC-ERNIE-ALL-TAPT-1103/kfold/
+
+# * 2020/11/14
+# python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion bce --prob_out --add_pseudo_data --hard_sample --pos_num 1500 --neg_num 0 --pseudo_path ./results/bert_spc-cuda-2-GHMC-ERNIE-ALL-TAPT-1103/kfold/
+
+# * 2020/11/16
+python train.py --model_name bert_spc --seed 1000 --bert_lr 2e-5 --num_epoch 4 --max_length 100 --cuda 3 --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/roberta_wwm_ext-ALL-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --cv_type GroupKFold --criterion ghmc --prob_out
+
+
+
+
 
 # python train.py --model_name bert_rnn --seed 1000 --bert_lr 2e-5 --num_epoch 3 --max_length 100 --cuda 2  --notsavemodel --log_step 20 --pretrained_bert_name ./pretrain_models/ERNIE-TAPT --attack_type fgm --scheduler --cross_val_fold 7 --diff_lr --layers_lr 0.001
 

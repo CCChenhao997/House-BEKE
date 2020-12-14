@@ -19,7 +19,7 @@ from lossfunc.diceloss import BinaryDiceLoss
 from attack import FGM, PGD
 from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif, case_data, collate_wrapper
 from config import opt, logger, dataset_files
-from voting import vote, generate_pseudo_data
+from voting import vote, generate_pseudo_data, search_f1, ratio, kfold_search_f1, kfold_result_combined
 from optimizer.radam import RAdam
 from optimizer.ranger import Ranger
 from optimizer.lookahead import Lookahead
@@ -32,25 +32,6 @@ def setup_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
 
-def search_f1(y_true, y_pred):
-    best = 0
-    best_t = 0
-    for i in range(opt.start, opt.end):
-        tres = i / 100
-        y_pred_bin =  (y_pred >= tres)
-        score = metrics.f1_score(y_true, y_pred_bin, average='binary')
-        if score > best:
-            best = score
-            best_t = tres
-    return best, best_t
-
-def ratio(label_path):
-    df = pd.read_csv(label_path, sep='\t', header=None, encoding='utf-8', engine='python')
-    df.columns=['id','id_sub', 'label']
-    logger.info("预测标签比例为:")
-    logger.info(df['label'].value_counts())
-
-
 class Instructor:
     ''' Model training and evaluation '''
     def __init__(self, test_query, test_reply):
@@ -59,14 +40,16 @@ class Instructor:
         self.model = opt.model_class(bert_model, opt).to(opt.device)
 
         # * testset
-        # self.test_query = test_query
-        # self.test_reply = test_reply
         df_test_query = pd.read_csv(test_query, sep='\t', header=None, encoding='utf-8', engine='python')
         df_test_query.columns=['id','q1']
         df_test_reply = pd.read_csv(test_reply, sep='\t', header=None, encoding='utf-8', engine='python')
         df_test_reply.columns=['id','id_sub','q2']
         df_test_reply['q2'] = df_test_reply['q2'].fillna('好的')
         df_test_data = df_test_query.merge(df_test_reply, how='left')
+        if opt.add_pseudo_data:
+            self.pseudo_groups = df_test_data.loc[:, 'id'].to_numpy()
+            self.pseudo_index = np.array(df_test_data.index)
+            self.pseudo_data = copy.deepcopy(df_test_data)
         self.submit = copy.deepcopy(df_test_reply)
         # self.pseudo = copy.deepcopy(df_test_data)
         testset = BertSentenceDataset(df_test_data, self.tokenizer, test=True)
@@ -379,8 +362,11 @@ class Instructor:
                 outputs = torch.sigmoid(outputs)
                 outputs_all = torch.cat((outputs_all, outputs), dim=0) if outputs_all is not None else outputs
 
-        predict = (outputs_all.cpu() >= best_threshold)
-        predict = predict.squeeze().long().tolist()
+        if opt.prob_out:
+            predict = outputs_all.cpu().squeeze().tolist()
+        else:
+            predict = (outputs_all.cpu() >= best_threshold)
+            predict = predict.squeeze().long().tolist()
 
         # 'id','id_sub','q2'
         self.submit['label'] = pd.DataFrame(predict)
@@ -395,7 +381,8 @@ class Instructor:
             save_path = DATA_DIR + '{}-fold-f1_{:.4f}-{}.tsv'.format(kfold, max_f1, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
         self.submit.to_csv(save_path, columns=['id', 'id_sub', 'label'], index=False, header=False, sep='\t')
         logger.info("预测成功！")
-        ratio(save_path)
+        if not opt.prob_out:
+            ratio(save_path)
 
     def _casestudy(self, rawdata, dataset, model, best_threshold, max_f1, kfold, reverse=False):
         model.eval()
@@ -456,6 +443,17 @@ class Instructor:
             skf = GroupKFold(n_splits=opt.cross_val_fold)
             kfold_data = skf.split(X, y, groups=groups)
 
+        # * pseudo_kfold
+        # pseudo_kfold = None
+        # if opt.add_pseudo_data:
+        #     df_pseudo_label = pd.read_csv(opt.pseudo_path, sep='\t', header=None, encoding='utf-8', engine='python')
+        #     df_pseudo_label.columns=['id','id_sub', 'label']
+        #     pseudo_y = df_pseudo_label.loc[:, 'label'].to_numpy()
+        #     assert len(self.pseudo_index) == len(pseudo_y),  "pseudo_data not eq pseudo_y."
+        #     self.pseudo_data['label'] = pseudo_y
+        #     pseudo_skf = GroupKFold(n_splits=opt.cross_val_fold)
+        #     pseudo_kfold = pseudo_skf.split(self.pseudo_index, pseudo_y, groups=self.pseudo_groups)
+
         for kfold, (train_index, dev_index) in enumerate(kfold_data):
             logger.info("kfold: {}".format(kfold + 1))
             df_train_data = df_data.iloc[train_index]
@@ -467,20 +465,30 @@ class Instructor:
                 # df_pseudo_label.columns=['id','id_sub', 'label']
                 # df_pseudo = copy.deepcopy(self.pseudo)
                 # df_pseudo['label'] = df_pseudo_label['label']
-                df_pseudo_pos, df_pseudo_neg = generate_pseudo_data(opt.dataset_file['test_query'], opt.dataset_file['test_reply'], opt.pseudo_path)
+                easy_pseudo_pos, easy_pseudo_neg, hard_pseudo_pos, hard_pseudo_neg = generate_pseudo_data(opt.dataset_file['test_query'], opt.dataset_file['test_reply'], opt.pseudo_path)
 
                 if opt.pos_num > 0:
-                    # df_pseudo_pos = df_pseudo[df_pseudo['label'] == 1].sample(n=opt.pos_num, random_state=kfold)
-                    # df_train_data = df_train_data.append(df_pseudo_pos)
-                    df_pseudo_pos_samples = df_pseudo_pos.sample(n=opt.pos_num, random_state=kfold)
-                    df_train_data = df_train_data.append(df_pseudo_pos_samples, sort=False)
-
+                    if opt.hard_sample:
+                        assert opt.pos_num <= hard_pseudo_pos.shape[0], 'opt.pos_num <= hard_pseudo_pos.shape[0] not satisfied'
+                        hard_pseudo_pos_samples = hard_pseudo_pos.sample(n=opt.pos_num, random_state=kfold)
+                        df_train_data = df_train_data.append(hard_pseudo_pos_samples, sort=False)
+                    else:
+                        assert opt.pos_num <= easy_pseudo_pos.shape[0], 'opt.pos_num <= easy_pseudo_pos.shape[0] not satisfied'
+                        easy_pseudo_pos_samples = easy_pseudo_pos.sample(n=opt.pos_num, random_state=kfold)
+                        df_train_data = df_train_data.append(easy_pseudo_pos_samples, sort=False)
                 if opt.neg_num > 0:
-                    # df_pseudo_neg = df_pseudo[df_pseudo['label'] == 0].sample(n=opt.neg_num, random_state=kfold)
-                    # df_train_data.append(df_pseudo_neg, sort=False)
-                    df_pseudo_neg_samples = df_pseudo_neg.sample(n=opt.neg_num, random_state=kfold)
-                    df_train_data = df_train_data.append(df_pseudo_neg_samples, sort=False)
+                    if opt.hard_sample:
+                        assert opt.neg_num <= hard_pseudo_neg.shape[0], 'opt.neg_num <= hard_pseudo_neg.shape[0] not satisfied'
+                        hard_pseudo_neg_samples = hard_pseudo_neg.sample(n=opt.neg_num, random_state=kfold)
+                        df_train_data = df_train_data.append(hard_pseudo_neg_samples, sort=False)
+                    else:
+                        assert opt.neg_num <= easy_pseudo_neg.shape[0], 'opt.neg_num <= easy_pseudo_neg.shape[0] not satisfied'
+                        easy_pseudo_neg_samples = easy_pseudo_neg.sample(n=opt.neg_num, random_state=kfold)
+                        df_train_data = df_train_data.append(easy_pseudo_neg_samples, sort=False)
 
+                # _, pseudo_idx = pseudo_kfold.__next__()
+                # df_pseudo_data = self.pseudo_data.iloc[pseudo_idx]
+                # df_train_data = df_train_data.append(df_pseudo_data, sort=False)
                 logger.info("df_train_data_add_pseudo: {}".format(df_train_data.shape))
 
             model = copy.deepcopy(self.model)
@@ -502,12 +510,20 @@ class Instructor:
                 self._predict(self.test_dataloader_reverse, self.best_model, best_threshold, max_f1, kfold + 1, reverse=True)
             logger.info('=' * 60)
         
-        vote('./results/{}-cuda-{}/kfold/'.format(opt.model_name, opt.cuda))
-        ratio('./results/{}-cuda-{}/kfold/'.format(opt.model_name, opt.cuda) + 'voted.tsv')
+        kfold_path = './results/{}-cuda-{}/kfold/'.format(opt.model_name, opt.cuda)
+        if opt.prob_out:
+            global_f1_mean, global_threshold = kfold_search_f1(kfold_path.replace("kfold", "casestudy"))
+            kfold_result_combined(kfold_path, pattern='weighted', threshold=global_threshold)
+            kfold_result_combined(kfold_path, pattern='average', threshold=global_threshold)
+            logger.info("global_f1_mean: {:.4f}, threshold: {:.2f}".format(global_f1_mean, global_threshold))
+        else:
+            kfold_result_combined(kfold_path, pattern='vote')
+            # vote(kfold_path)
+            ratio(kfold_path + 'vote.tsv')
 
         for idx, fscore in enumerate(max_f1_list):
             logger.info("{}-fold-max_f1: {:.4f}".format(idx + 1, fscore))
-        logger.info("f1-mean: {:.4f}".format(np.mean(max_f1_list)))
+        logger.info("kfold_f1-mean: {:.4f}".format(np.mean(max_f1_list)))
 
 
 def main():
